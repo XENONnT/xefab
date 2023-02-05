@@ -1,0 +1,58 @@
+[tool]
+[tool.poetry]
+name = "xefab"
+version = "0.1.0"
+homepage = "https://github.com/jmosbacher/xefab"
+description = "Top-level package for xefab."
+authors = ["Yossi Mosbacher <joe.mosbacher@gmail.com>"]
+readme = "README.rst"
+classifiers=[
+    'Development Status :: 2 - Pre-Alpha',
+    'Intended Audience :: Developers',
+    'Natural Language :: English',
+    'Programming Language :: Python :: 3.8',
+    'Programming Language :: Python :: 3.9',
+]
+packages = [
+    { include = "xefab" },
+    { include = "tests", format = "sdist" },
+]
+
+[tool.poetry.dependencies]
+python = ">=3.8"
+fabric = "^3.0.0"
+rich = "^13.3.1"
+appdirs = "^1.4.4"
+pandas = "^1.5.3"
+
+[tool.poetry.dev-dependencies]
+bumpversion = "*"
+coverage = "*"
+flake8 = "*"
+isort = "*"
+pylint = "*"
+pytest-cov = "*"
+invoke = "*"
+black = "*"
+pytest = "*"
+sphinx = "*"
+tox = "*"
+yapf = "*"
+sphinx-material = "*"
+
+[tool.poetry.scripts]
+xefab = 'xefab.main:program.run'
+
+[tool.poetry.plugins."xefab.tasks"]
+"midway" = "xefab.hosts.uchicago.midway"
+"dali" = "xefab.hosts.uchicago.dali"
+"osg" = "xefab.hosts.osg"
+
+[build-system]
+requires = ["poetry-core>=1.0.8", "setuptools"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.dephell.main]
+versioning = "semver"
+from = {format = "poetry", path = "pyproject.toml"}
+to = {format = "setuppy", path = "setup.py"}
