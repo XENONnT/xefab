@@ -16,19 +16,16 @@ XEFAB_CONFIG = os.getenv(
 
 class Config(FabricConfig):
     """Settings for xefab."""
-    console: Console
+    console: Console = Console()
     prefix = "xefab"
     
     def __init__(self, *args, **kwargs):
-        console = kwargs.pop("console", Console())
+        console = kwargs.pop("console", None)
+        if console is not None:
+            self._set("console", console)
         kwargs.setdefault("system_prefix", dirs.site_config_dir)
         kwargs.setdefault("user_prefix", dirs.user_config_dir)
         super().__init__(*args, **kwargs)
-        self._set(console = console)
-
-    def load_ssh_config(self):
-        super().load_ssh_config()
-        # self._load_hostnames_ssh_configs()
 
     def _get_ssh_config(self, name, hostname):
         """Look up the host in the SSH config, if it exists."""
@@ -50,22 +47,6 @@ class Config(FabricConfig):
         if config:
             self.base_ssh_config._config.insert(0, config)
 
-    # def _load_hostnames_ssh_configs(self):
-    #     configs = []
-    #     for name, cfg in self.host_configs.items():
-    #         hostname = cfg.get('hostname', name)
-    #         config = self._get_ssh_config(name, hostname)
-    #         if config:
-    #             configs.append(config)
-    #     if configs:
-    #         self.base_ssh_config._config = configs + self.base_ssh_config._config
-
-    @staticmethod
-    def entrypoints_config():
-        config = {}
-        
-        return config
-
     @staticmethod
     def global_defaults():
         """Add extra parameters to the default dict."""
@@ -83,13 +64,6 @@ class Config(FabricConfig):
         
         ours = {
             'console': Console(),
-        
-            'host_configs': {
-                'midway': {'hostname': 'midway2.rcc.uchicago.edu'},
-                'dali': {'hostname': 'dali-login2.rcc.uchicago.edu'},
-                'osg': {'hostname': 'osg-login1.rcc.uchicago.edu'},
-            },
-
             'tasks': {
                 'collection_name': 'xefab',
             }
