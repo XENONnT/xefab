@@ -1,12 +1,13 @@
-
-from .squeue_task import squeue
-from .jupyter_task import start_jupyter
-
 from xefab.collection import XefabCollection
 
-namespace = XefabCollection('dali')
+from .jupyter_task import start_jupyter
+from .squeue_task import squeue
 
-namespace.configure({'hostname': 'dali-login2.rcc.uchicago.edu'})
+namespace = XefabCollection("dali")
+
+namespace.configure(
+    {"hostnames": ["dali-login2.rcc.uchicago.edu", "dali-login1.rcc.uchicago.edu"]}
+)
 
 namespace.add_task(squeue)
 namespace.add_task(start_jupyter)

@@ -41,10 +41,9 @@ You can list the available tasks using the ``--list`` option.
 
     Remote Hosts:
 
-    dali     dali-login2.rcc.uchicago.edu
-    midway   midway2.rcc.uchicago.edu
+    dali     dali-login2.rcc.uchicago.edu,dali-login1.rcc.uchicago.edu
+    midway   midway2.rcc.uchicago.edu,midway1.rcc.uchicago.edu
     osg      login.xenon.ci-connect.net
-
 
 Some tasks are registered to run on a specific host. When you run them, the --hosts option will be ignored.
 

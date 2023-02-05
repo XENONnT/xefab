@@ -1,7 +1,9 @@
 import time
+
 import pandas as pd
 from fabric.connection import Connection
 from fabric.tasks import task
+
 from xefab.utils import df_to_table
 
 
@@ -20,22 +22,21 @@ def parse_squeue_output(squeue_output):
 
 
 @task
-def squeue(c: Connection, 
-        user: str = 'me', partition: str = None, 
-        out: str = '') -> pd.DataFrame:
-    
-    """Get the job-queue status.
-    """
+def squeue(
+    c: Connection, user: str = "me", partition: str = None, out: str = ""
+) -> pd.DataFrame:
+
+    """Get the job-queue status."""
 
     command = "squeue"
 
-    if user in ['*', 'all']:
+    if user in ["*", "all"]:
         pass
-    elif user in ['me', 'self', '']:
+    elif user in ["me", "self", ""]:
         command += f" -u {c.user}"
     else:
         command += f" -u {user}"
-    
+
     if partition:
         command += f" -p {partition}"
 

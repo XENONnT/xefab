@@ -1,13 +1,12 @@
-import os
 import contextlib
 import errno
+import os
 import socket
 from typing import Optional
 
 import pandas as pd
-from rich.table import Table
 from invoke.util import enable_logging
-
+from rich.table import Table
 
 if os.environ.get("XEFAB_DEBUG") in ("1", "true", "True"):
     enable_logging()

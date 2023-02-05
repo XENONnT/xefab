@@ -3,13 +3,12 @@ Tasks for maintaining the project.
 
 Execute 'invoke --list' for guidance on using Invoke
 """
-import shutil
 import platform
+import shutil
+import webbrowser
+from pathlib import Path
 
 from invoke import task
-from pathlib import Path
-import webbrowser
-
 
 ROOT_DIR = Path(__file__).parent
 SETUP_FILE = ROOT_DIR.joinpath("setup.py")
@@ -37,21 +36,20 @@ def _delete_file(file):
 
 
 def _run(c, command):
-    return c.run(command, pty=platform.system() != 'Windows')
+    return c.run(command, pty=platform.system() != "Windows")
 
 
-@task(help={'check': "Checks if source is formatted without applying changes"})
+@task(help={"check": "Checks if source is formatted without applying changes"})
 def format(c, check=False):
     """
     Format code
     """
     python_dirs_string = " ".join(PYTHON_DIRS)
     # Run yapf
-    yapf_options = '--recursive {}'.format('--diff' if check else '--in-place')
+    yapf_options = "--recursive {}".format("--diff" if check else "--in-place")
     _run(c, "yapf {} {}".format(yapf_options, python_dirs_string))
     # Run isort
-    isort_options = '--recursive {}'.format(
-        '--check-only --diff' if check else '')
+    isort_options = "--recursive {}".format("--check-only --diff" if check else "")
     _run(c, "isort {} {}".format(isort_options, python_dirs_string))
 
 
@@ -86,7 +84,7 @@ def test(c):
     _run(c, "pytest")
 
 
-@task(help={'publish': "Publish the result via coveralls"})
+@task(help={"publish": "Publish the result via coveralls"})
 def coverage(c, publish=False):
     """
     Create coverage report
@@ -102,7 +100,7 @@ def coverage(c, publish=False):
         webbrowser.open(COVERAGE_REPORT.as_uri())
 
 
-@task(help={'launch': "Launch documentation in the web browser"})
+@task(help={"launch": "Launch documentation in the web browser"})
 def docs(c, launch=True):
     """
     Generate documentation
@@ -176,7 +174,8 @@ def release(c):
     """
     _run(c, "poetry publish")
 
-@task(help={'version': "major/minor/path or explicit version"})
+
+@task(help={"version": "major/minor/path or explicit version"})
 def bump(c, version="patch"):
     """
     Bump version
