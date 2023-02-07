@@ -7,8 +7,10 @@ from invoke.util import debug
 from rich.console import Console
 
 from xefab.entrypoints import get_entry_points
+from xefab.utils import console
 
-dirs = appdirs.AppDirs("XEFAB")
+
+dirs = appdirs.AppDirs("xefab")
 
 XEFAB_CONFIG = os.getenv(
     "XEFAB_CONFIG", os.path.join(dirs.user_config_dir, "config.env")
@@ -18,25 +20,23 @@ XEFAB_CONFIG = os.getenv(
 class Config(FabricConfig):
     """Settings for xefab."""
 
-    console: Console = Console()
     prefix = "xefab"
 
     def __init__(self, *args, **kwargs):
-        console = kwargs.pop("console", None)
-        if console is not None:
-            self._set("console", console)
-        kwargs.setdefault("system_prefix", dirs.site_config_dir)
-        kwargs.setdefault("user_prefix", dirs.user_config_dir)
+        kwargs.setdefault("system_prefix", dirs.site_config_dir + '/')
+        kwargs.setdefault("user_prefix", dirs.user_config_dir + '/')
         super().__init__(*args, **kwargs)
 
-    def _get_ssh_config(self, name, hostname):
+    def _get_ssh_config(self, hostname):
         """Look up the host in the SSH config, if it exists."""
         config = {"hostname": hostname}
+
         for host in self.base_ssh_config.get_hostnames():
             data = self.base_ssh_config.lookup(host)
-            if host in [name, hostname] or hostname == data.get("hostname", None):
+            host_hostname = data.get("hostname", "")
+            if hostname in [host, host_hostname]:
                 config.update(data)
-                return data
+                return config
 
     def configure_ssh_for_host(self, host, hostnames=None):
         """Find the SSH config for a host."""
@@ -44,19 +44,24 @@ class Config(FabricConfig):
             hostnames = hostnames.split(",")
 
         config = None
-
         if hostnames is None:
             config = self.base_ssh_config.lookup(host)
+
         elif not isinstance(hostnames, list):
             debug(
-                f"xefab: hostnames must be a list or a string, got {type(hostnames)} for host {host}. Ignoring"
+                "xefab: hostnames must be a list or a string,"
+                f" got {type(hostnames)} for host {host}. Ignoring"
             )
+            return
+
+        self.load_ssh_config()
+
+        for hostname in hostnames:
+            config = self._get_ssh_config(hostname)
+            if config is not None:
+                debug(f"xefab: found ssh config for {hostname}")
+                break
         else:
-            for hostname in hostnames:
-                config = self._get_ssh_config(host, hostname)
-                if config:
-                    break
-        if not config:
             config = {"hostname": hostname}
 
         ssh_config = {"host": host, "config": config}
@@ -79,7 +84,6 @@ class Config(FabricConfig):
                 continue
 
         ours = {
-            "console": Console(),
             "tasks": {
                 "collection_name": "xefab",
             },

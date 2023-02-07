@@ -4,7 +4,7 @@ import pandas as pd
 from fabric.connection import Connection
 from fabric.tasks import task
 
-from xefab.utils import df_to_table
+from xefab.utils import console, df_to_table
 
 
 def parse_squeue_output(squeue_output):
@@ -21,7 +21,7 @@ def parse_squeue_output(squeue_output):
     return pd.DataFrame(squeue_data, columns=header_fields).dropna(how="all")
 
 
-@task
+@task(aliases=["job-queue"])
 def squeue(
     c: Connection, user: str = "me", partition: str = None, out: str = ""
 ) -> pd.DataFrame:
@@ -40,25 +40,25 @@ def squeue(
     if partition:
         command += f" -p {partition}"
 
-    with c.console.status(f"Running {command} on {c.host}..."):
+    with console.status(f"Running {command} on {c.host}..."):
         r = c.run(command, hide=True, warn=True)
         squeue_output = r.stdout
     if r.failed:
-        c.console.print("Remote execution of squeue on {c.host} failed. stderr:")
-        c.console.print(r.stderr)
+        console.print("Remote execution of squeue on {c.host} failed. stderr:")
+        console.print(r.stderr)
         exit(r.return_code)
 
     df = parse_squeue_output(squeue_output)
 
     if out:
-        with c.console.status(f"Saving squeue output to {out}..."):
+        with console.status(f"Saving squeue output to {out}..."):
             df.to_csv(out, index=False)
             time.sleep(0.5)
-        c.console.print(f"Output written to {out}")
+        console.print(f"Output written to {out}")
     else:
         table = df_to_table(df)
         if len(df) > 10:
-            with c.console.pager():
-                c.console.print(table)
+            with console.pager():
+                console.print(table)
         else:
-            c.console.print(table)
+            console.print(table)

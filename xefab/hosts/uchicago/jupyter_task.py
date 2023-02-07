@@ -8,9 +8,11 @@ from fabric.tasks import task
 from rich.layout import Layout
 from rich.panel import Panel
 
-from xefab.utils import get_open_port
+from xefab.utils import console, get_open_port
 
 from .squeue_task import parse_squeue_output
+from .utils import print_splash
+
 
 SPLASH_SCREEN = r"""
  __   __ ______  _   _   ____   _   _      _______ 
@@ -139,7 +141,7 @@ singularity exec --bind /project2 --bind /scratch/midway2/$USER --bind /dali $CO
 """
 
 
-@task
+@task(pre=[print_splash])
 def start_jupyter(
     c,
     env: str = "singularity",
@@ -161,7 +163,7 @@ def start_jupyter(
 ):
     """Start a jupyter notebook on remote host."""
 
-    print = c.console.log
+    print = console.log
 
     REMOTE_HOME = f"/home/{c.user}"
     if notebook_dir is None:
@@ -174,9 +176,7 @@ def start_jupyter(
     if local_cutax:
         env_vars["INSTALL_CUTAX"] = "0"
 
-    print(SPLASH_SCREEN)
-
-    with c.console.status("Creating straxlab folder..."):
+    with console.status("Creating straxlab folder..."):
         c.run("mkdir -p " + output_folder)
 
     log_fn = output_folder + "/jupyter.log"
@@ -185,9 +185,9 @@ def start_jupyter(
         s_container = "xenonnt-%s.simg" % tag
         starter_path = f"{output_folder}/start_notebook.sh"
         starter_script = StringIO(START_NOTEBOOK_SH)
-        with c.console.status(f"Copying starter script to {c.host}:{starter_path} ..."):
+        with console.status(f"Copying starter script to {c.host}:{starter_path} ..."):
             c.put(starter_script, remote=starter_path)
-        with c.console.status("Making starter script executable..."):
+        with console.status("Making starter script executable..."):
             c.run(f"chmod +x {starter_path}")
 
         batch_job = (
@@ -245,7 +245,7 @@ def start_jupyter(
     )
 
     if use_reservation:
-        with c.console.status(
+        with console.status(
             "Notebook reservation requested. Checking availability..."
         ):
             result = c.run("scontrol show reservations", hide=True, warn=True)
@@ -254,7 +254,7 @@ def start_jupyter(
                 use_reservation = False
 
     unique_id = "".join(choices(ascii_lowercase, k=6))
-    with c.console.status("Checking for existing jobs..."):
+    with console.status("Checking for existing jobs..."):
         result = c.run(f"squeue -u {c.user} -n straxlab", hide=True, warn=True)
         df = parse_squeue_output(result.stdout)
         if len(df):
@@ -292,16 +292,16 @@ def start_jupyter(
         mem_per_cpu=int(ram / cpu),
     )
 
-    with c.console.status("Reseting log file..."):
+    with console.status("Reseting log file..."):
         c.put(StringIO(""), remote=log_fn)
 
-    with c.console.status("Copying batch job to remote host..."):
+    with console.status("Copying batch job to remote host..."):
         c.put(StringIO(batch_job), remote=job_fn)
 
-    with c.console.status("Setting permissions on batch job..."):
+    with console.status("Setting permissions on batch job..."):
         c.run("chmod +x " + job_fn)
 
-    with c.console.status("Submitting batch job..."):
+    with console.status("Submitting batch job..."):
         result = c.run("sbatch " + job_fn, env=env_vars, hide=True, warn=True)
 
     if result.failed:
@@ -310,7 +310,7 @@ def start_jupyter(
     job_id = int(result.stdout.split()[-1])
     print("Submitted job with ID: %d" % job_id)
 
-    with c.console.status("Waiting for your job to start..."):
+    with console.status("Waiting for your job to start..."):
         for _ in range(timeout):
             result = c.run("squeue -j %d" % job_id, hide=True, warn=True)
             df = parse_squeue_output(result.stdout)
@@ -322,7 +322,7 @@ def start_jupyter(
 
     print("Job started.")
 
-    with c.console.status("Waiting for jupyter server to start...") as status:
+    with console.status("Waiting for jupyter server to start...") as status:
         url = None
         for _ in range(timeout):
             time.sleep(1)
@@ -360,7 +360,7 @@ def start_jupyter(
 
     local_url = f"http://localhost:{local_port}?token={token}"
     msg = f"Forwarding remote address {remote_host}:{remote_port} to local port {local_port}..."
-    with c.console.status(msg) as status:
+    with console.status(msg) as status:
         print(f"You can access the notebook at {local_url}\n")
 
         if detached:
@@ -388,7 +388,7 @@ def start_jupyter(
                     f"python -m webbrowser -t {local_url}", hide=True, warn=True
                 )
                 try:
-                    c.console.input()
+                    console.input()
                 except KeyboardInterrupt:
                     print("Keyboard interrupt received.")
                 except:

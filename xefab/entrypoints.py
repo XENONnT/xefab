@@ -38,8 +38,6 @@ except ImportError:
 
         def get_entry_points(name):
             yield from ()
-
     else:
-
         def get_entry_points(name="xesites"):
             yield from pkg_resources.iter_entry_points(name)

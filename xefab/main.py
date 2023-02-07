@@ -17,15 +17,16 @@ class XeFab(Fab):
     def parse_collection(self):
         if self.namespace is None:
             self.namespace = XefabCollection.from_module(tasks, name="root")
-            self.namespace.load_objects_from_entry_points("xefab.tasks")
+            self.namespace.load_objects_from_entry_points()
 
         if self.core.unparsed and self.core.unparsed[0] in self.namespace.collections:
             sitename = self.core.unparsed.pop(0)
             self.namespace = self.namespace.collections[sitename]
-            hostnames = self.namespace.configuration().get("hostnames", None)
+            hostnames = self.namespace._configuration.get("hostnames", None)
             debug(f"xefab: {sitename} hostnames: {hostnames}")
             self.config.configure_ssh_for_host(sitename, hostnames)
-            self.args.hosts.value = sitename
+            if not self.args.hosts.value and hostnames is not None:
+                self.args.hosts.value = sitename
         super().parse_collection()
 
     def list_tasks(self):
