@@ -2,6 +2,7 @@ import json
 from io import StringIO, BytesIO
 from fabric.tasks import task
 from xefab.utils import console
+import pandas as pd
 from .install import ensure_dependency, github_cli
 from .secrets import github_token
 
@@ -90,3 +91,14 @@ def get_xenonnt_keys(c, hide: bool = False, add: bool = False):
     if add:
         c.run("gopass sync", warn=True)
     return keys
+
+
+@task
+def user_db(c, limit: int = None, hide: bool = False):
+    users = c.config.xent_collection(collection='users').find({}, projection={'_id': 0})
+    if limit is not None:
+        users = users.limit(int(limit))
+    df = pd.json_normalize(list(users))
+    if not hide:
+        console.print_json(df.to_json(orient='records'), indent=4)
+    return df

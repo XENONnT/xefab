@@ -56,3 +56,4 @@ def setup_utilix_config(c, apply: bool = False):
     if apply:
         c.run('chezmoi apply')
 namespace.add_task(setup_utilix_config)
+
