@@ -1,3 +1,4 @@
+import random
 import time
 import webbrowser
 from io import BytesIO, StringIO
@@ -66,77 +67,16 @@ jupyter {jupyter} --no-browser --port=$JUP_PORT --ip=$JUP_HOST --notebook-dir {n
 """
 
 
-SUCCESS_MESSAGE = """
-All done! If you have linux, execute this command on your laptop:
-
-ssh -fN -L {port}:{ip}:{port} {username}@{host} && sensible-browser http://localhost:{port}/{token}
-
-If you have a mac, instead do:
-
-ssh -fN -L {port}:{ip}:{port} {username}@{host} && open "http://localhost:{port}/{token}"
-
-Happy strax analysis, {username}!
-"""
-
-
 START_NOTEBOOK_SH = """
 #!/bin/bash
 
-IMAGE_NAME=$1
-JUPYTER_TYPE=$2
-NOTEBOOK_DIR=$3
+echo "Using singularity image: {CONTAINER}"
 
-IMAGE_DIR='/project2/lgrandi/xenonnt/singularity-images'
-
-# if we passed the full path to an image, use that
-if [ -e ${IMAGE_NAME} ]; then
-  CONTAINER=${IMAGE_NAME}
-# otherwise check if the name exists in the standard image directory
-elif [ -e ${IMAGE_DIR}/${IMAGE_NAME} ]; then
-  CONTAINER=${IMAGE_DIR}/${IMAGE_NAME}
-# if not any of those, throw an error
-else
-  echo "We could not find the container at its full path ${IMAGE_NAME} or in ${IMAGE_DIR}. Exiting."
-  exit 1
-fi
-
-if [ "x${JUPYTER_TYPE}" = "x" ]; then
-  JUPYTER_TYPE='lab'
-fi
-
-echo "Using singularity image: ${CONTAINER}"
-
-PORT=$(( 15000 + (RANDOM %= 5000) ))
-SINGULARITY_CACHEDIR=/scratch/midway2/$USER/singularity_cache
-
-# script to run inside container
-INNER=/home/$USER/straxlab/.singularity_inner_${PORT}.sh
-cat > $INNER << EOF
-#!/bin/bash
-JUP_HOST=\$(hostname -i)
-## print tunneling instructions
-echo -e "
-    Copy/Paste this in your local terminal to ssh tunnel with remote
-    -----------------------------------------------------------------
-    ssh -N -f -L localhost:$PORT:\$JUP_HOST:$PORT ${USER}@midway2.rcc.uchicago.edu
-    -----------------------------------------------------------------
-
-    Then open a browser on your local machine to the following address
-    ------------------------------------------------------------------
-    localhost:$PORT
-    ------------------------------------------------------------------
-    and use the token that appears below to login.
-
-    OR replace "$ipnip" in the address below with "localhost" and copy
-    to your local browser.
-    " 2>&1
-
-jupyter ${JUPYTER_TYPE} --no-browser --port=$PORT --ip=\$JUP_HOST --notebook-dir ${NOTEBOOK_DIR} 2>&1
-EOF
-chmod +x $INNER
+SINGULARITY_CACHEDIR=/scratch/midway2/{USER}/singularity_cache
 
 module load singularity
-singularity exec --bind /project2 --bind /scratch/midway2/$USER --bind /dali $CONTAINER $INNER
+
+singularity exec {BIND_STR} {CONTAINER} jupyter {JUPYTER_TYPE} --no-browser --port={PORT} --ip=0.0.0.0 --notebook-dir {NOTEBOOK_DIR}
 
 """
 
@@ -145,9 +85,10 @@ singularity exec --bind /project2 --bind /scratch/midway2/$USER --bind /dali $CO
 def start_jupyter(
     c,
     env: str = "singularity",
-    partition: str = "xenon1t",
+    partition: str = None,
     bypass_reservation: bool = False,
     tag: str = "development",
+    binds: str = None,
     node: str = None,
     timeout: int = 120,
     cpu: int = 2,
@@ -158,17 +99,43 @@ def start_jupyter(
     notebook_dir: str = None,
     max_hours: int = 4,
     force_new: bool = False,
-    local_port=8889,
+    local_port: int = 8888,
+    remote_port: int = None,
     detached: bool = False,
+    no_browser: bool = False,
+    image_dir: str = None,
+    debug: bool = False,
 ):
     """Start a jupyter notebook on remote host."""
 
-    print = console.log
+    print = console.print
+
+
+    unique_id = "".join(choices(ascii_lowercase, k=6))
+
+    if image_dir is None:
+        image_dir = '/project2/lgrandi/xenonnt/singularity-images'
 
     REMOTE_HOME = f"/home/{c.user}"
     if notebook_dir is None:
         notebook_dir = REMOTE_HOME
     output_folder = f"{REMOTE_HOME}/straxlab"
+    
+    if remote_port is None:
+        remote_port = random.randrange(15000, 20000)
+
+    if partition is None:
+        partition = "dali" if c.original_host == "dali" else "xenon1t"
+    
+    if binds is None:
+        binds = "/project2, /scratch, /dali"
+
+    if isinstance(binds, str):
+        binds = [bind.strip() for bind in binds.split(",")]
+
+    bind_str = " ".join([f"--bind {bind}" for bind in binds])
+
+    console.log(f"Using partition {partition}")
 
     local_port = get_open_port(start=local_port)
     env_vars = {}
@@ -176,29 +143,31 @@ def start_jupyter(
     if local_cutax:
         env_vars["INSTALL_CUTAX"] = "0"
 
-    with console.status("Creating straxlab folder..."):
-        c.run("mkdir -p " + output_folder)
-
-    log_fn = output_folder + "/jupyter.log"
+    with console.status("Checking if job folder exists...") as status:
+        if not c.run(f"test -d {output_folder}", warn=True).ok:
+            status.update("Creating job folder...")
+            c.run("mkdir -p " + output_folder)        
 
     if env == "singularity":
-        s_container = "xenonnt-%s.simg" % tag
-        starter_path = f"{output_folder}/start_notebook.sh"
-        starter_script = StringIO(START_NOTEBOOK_SH)
+        s_container = f"{image_dir}/xenonnt-{tag}.simg"
+        starter_path = f"{output_folder}/start_notebook_{unique_id}.sh"
+        starter_script = START_NOTEBOOK_SH.format(
+            CONTAINER=s_container,
+            JUPYTER_TYPE=jupyter,
+            NOTEBOOK_DIR=notebook_dir,
+            PORT=remote_port,
+            BIND_STR=bind_str,
+            USER=c.user,
+            )
+        starter_script_fd = StringIO(starter_script)
         with console.status(f"Copying starter script to {c.host}:{starter_path} ..."):
-            c.put(starter_script, remote=starter_path)
+            c.put(starter_script_fd, remote=starter_path)
+
         with console.status("Making starter script executable..."):
             c.run(f"chmod +x {starter_path}")
 
-        batch_job = (
-            JOB_HEADER + "{starter_path} "
-            "{s_container} {jupyter} {nbook_dir}".format(
-                starter_path=starter_path,
-                s_container=s_container,
-                jupyter=jupyter,
-                nbook_dir=notebook_dir,
-            )
-        )
+        batch_job = JOB_HEADER + f"{starter_path} "
+
     elif env == "cvmfs":
         batch_job = (
             JOB_HEADER
@@ -224,9 +193,7 @@ def start_jupyter(
     else:
         qos = partition
 
-    url = None
-    url_cache_fn = REMOTE_HOME + "/.last_jupyter_url"
-    username = c.user
+    #FIXME: check if a job is already running.
 
     _want_to_make_reservation = partition == "xenon1t" and (not bypass_reservation)
     if ram > 16000 and _want_to_make_reservation:
@@ -251,18 +218,16 @@ def start_jupyter(
                 print("Notebook reservation does not exist, submitting a regular job.")
                 use_reservation = False
 
-    unique_id = "".join(choices(ascii_lowercase, k=6))
+    
     with console.status("Checking for existing jobs..."):
         result = c.run(f"squeue -u {c.user} -n straxlab", hide=True, warn=True)
         df = parse_squeue_output(result.stdout)
-        if len(df):
+        if len(df) or force_new:
             job_fn = "/".join([output_folder, f"notebook_{unique_id}.sbatch"])
+            log_fn = "/".join([output_folder, f"notebook_{unique_id}.log"])
         else:
             job_fn = "/".join([output_folder, "notebook.sbatch"])
-    if not force_new:
-        log_fn = "/".join([output_folder, "notebook.log"])
-    else:
-        log_fn = "/".join([output_folder, f"notebook_forced_{unique_id}.log"])
+            log_fn = "/".join([output_folder, "notebook.log"])
 
     extra_header = (
         GPU_HEADER
@@ -275,6 +240,7 @@ def start_jupyter(
             ),
         )
     )
+
     if node:
         extra_header += "\n#SBATCH --nodelist={node}".format(node=node)
     if max_hours is None:
@@ -306,6 +272,7 @@ def start_jupyter(
         raise RuntimeError("Could not submit batch job. Error: " + result.stderr)
 
     job_id = int(result.stdout.split()[-1])
+
     print("Submitted job with ID: %d" % job_id)
 
     with console.status("Waiting for your job to start..."):
@@ -316,7 +283,7 @@ def start_jupyter(
                 break
             time.sleep(1)
         else:
-            raise RuntimeError("Job did not start within %d seconds." % timeout)
+            raise RuntimeError("Timeout reached while waiting for job to start.")
 
     print("Job started.")
 
@@ -330,7 +297,7 @@ def start_jupyter(
             lines = [line.decode() for line in log_content.readlines()]
 
             for line in lines:
-                if "http://" in line and "?token=" in line:
+                if "http://" in line and f":{remote_port}" in line:
                     url = line.split()[-1]
                     break
             else:
@@ -345,7 +312,7 @@ def start_jupyter(
             break
         else:
             raise RuntimeError(
-                "Jupyter server did not start within %d seconds." % timeout
+                "Timeout reached while waiting for jupyter to start."
             )
 
         print("\nJupyter started succesfully.")
@@ -353,10 +320,12 @@ def start_jupyter(
         remote_host, remote_port = url.split("/")[2].split(":")
         if "token" in url:
             token = url.split("?")[1].split("=")[1]
+            local_url = f"http://localhost:{local_port}?token={token}"
         else:
             token = ""
+            local_url = f"http://localhost:{local_port}"
 
-    local_url = f"http://localhost:{local_port}?token={token}"
+    
     msg = f"Forwarding remote address {remote_host}:{remote_port} to local port {local_port}..."
     with console.status(msg) as status:
         print(f"You can access the notebook at {local_url}\n")
@@ -369,7 +338,8 @@ def start_jupyter(
                 warn=True,
             )
             time.sleep(3)
-            c.local(f"python -m webbrowser -t {local_url}", hide=True, warn=True)
+            if not no_browser:
+                c.local(f"python -m webbrowser -t {local_url}", hide=True, warn=True)
         else:
             # Can never be too careful
             local_port = int(local_port)
@@ -382,9 +352,10 @@ def start_jupyter(
                     "   Press ENTER or CTRL-C to deactivate and cancel job."
                 )
                 time.sleep(3)
-                result = c.local(
-                    f"python -m webbrowser -t {local_url}", hide=True, warn=True
-                )
+                if not no_browser:
+                    result = c.local(
+                        f"python -m webbrowser -t {local_url}", hide=True, warn=True
+                    )
                 try:
                     console.input()
                 except KeyboardInterrupt:
@@ -397,4 +368,26 @@ def start_jupyter(
                 c.run("scancel %d" % job_id, hide=True)
             except:
                 print("Could not cancel job. Please cancel it manually.")
+            finally:
+                if not debug:
+                    status.update("Cleaning up job files...")
+                    result = c.run("rm %s" % job_fn, hide=True, warn=True)
+                    if result.failed:
+                        print("Could not remove job batch file.")
+                    else:
+                        print("Job batch file removed.")
+                    result = c.run("rm %s" % log_fn, hide=True, warn=True)
+                    if result.failed:
+                        print("Could not remove log file.")
+                    else:
+                        print("Log file removed.")
+                    for _ in range(3):
+                        time.sleep(2)
+                        result = c.run("rm %s" % starter_path, hide=True, warn=True)
+                        if result.ok:
+                            print("job executable file removed.")
+                            break
+                    else:
+                        print("Could not job executable. Please remove it manually. Path: {starter_path}")
+                        
     print("Goodbye!")
