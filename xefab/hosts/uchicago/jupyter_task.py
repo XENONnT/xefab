@@ -70,27 +70,13 @@ jupyter {jupyter} --no-browser --port=$JUP_PORT --ip=$JUP_HOST --notebook-dir {n
 START_NOTEBOOK_SH = """
 #!/bin/bash
 
-if [ "x${JUPYTER_TYPE}" = "x" ]; then
-  JUPYTER_TYPE='lab'
-fi
-
 echo "Using singularity image: {CONTAINER}"
 
 SINGULARITY_CACHEDIR=/scratch/midway2/{USER}/singularity_cache
 
-# script to run inside container
-INNER=/home/{USER}/straxlab/.singularity_inner_{PORT}.sh
-cat > $INNER << EOF
-#!/bin/bash
-JUP_HOST=\$(hostname -i)
-
-jupyter {JUPYTER_TYPE} --no-browser --port={PORT} --ip=\$JUP_HOST --notebook-dir {NOTEBOOK_DIR} 2>&1
-EOF
-chmod +x $INNER
-
 module load singularity
-singularity exec {BIND_STR} {CONTAINER} $INNER
-rm $INNER
+
+singularity exec {BIND_STR} {CONTAINER} jupyter {JUPYTER_TYPE} --no-browser --port={PORT} --ip=0.0.0.0 --notebook-dir {NOTEBOOK_DIR}
 
 """
 
@@ -113,11 +99,12 @@ def start_jupyter(
     notebook_dir: str = None,
     max_hours: int = 4,
     force_new: bool = False,
-    local_port: int = 8889,
+    local_port: int = 8888,
     remote_port: int = None,
     detached: bool = False,
     no_browser: bool = False,
     image_dir: str = None,
+    debug: bool = False,
 ):
     """Start a jupyter notebook on remote host."""
 
@@ -156,10 +143,10 @@ def start_jupyter(
     if local_cutax:
         env_vars["INSTALL_CUTAX"] = "0"
 
-    with console.status("Creating straxlab folder..."):
-        c.run("mkdir -p " + output_folder)
-
-    # log_fn = f"{output_folder}/xefab_jupyter_{unique_id}.log"
+    with console.status("Checking if job folder exists...") as status:
+        if not c.run(f"test -d {output_folder}", warn=True).ok:
+            status.update("Creating job folder...")
+            c.run("mkdir -p " + output_folder)        
 
     if env == "singularity":
         s_container = f"{image_dir}/xenonnt-{tag}.simg"
@@ -381,4 +368,26 @@ def start_jupyter(
                 c.run("scancel %d" % job_id, hide=True)
             except:
                 print("Could not cancel job. Please cancel it manually.")
+            finally:
+                if not debug:
+                    status.update("Cleaning up job files...")
+                    result = c.run("rm %s" % job_fn, hide=True, warn=True)
+                    if result.failed:
+                        print("Could not remove job batch file.")
+                    else:
+                        print("Job batch file removed.")
+                    result = c.run("rm %s" % log_fn, hide=True, warn=True)
+                    if result.failed:
+                        print("Could not remove log file.")
+                    else:
+                        print("Log file removed.")
+                    for _ in range(3):
+                        time.sleep(2)
+                        result = c.run("rm %s" % starter_path, hide=True, warn=True)
+                        if result.ok:
+                            print("job executable file removed.")
+                            break
+                    else:
+                        print("Could not job executable. Please remove it manually. Path: {starter_path}")
+                        
     print("Goodbye!")
