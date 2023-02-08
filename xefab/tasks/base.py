@@ -1,6 +1,7 @@
 from fabric.tasks import task
-from xefab.utils import console
 from invoke.context import DataProxy
+
+from xefab.utils import console
 
 
 def printable(d):

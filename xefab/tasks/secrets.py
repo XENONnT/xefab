@@ -1,9 +1,9 @@
 from fabric.tasks import task
+
 from xefab.collection import XefabCollection
 from xefab.utils import console
 
-from .install import ensure_dependency, gopass, chezmoi
-
+from .install import chezmoi, ensure_dependency, gopass
 
 namespace = XefabCollection("secrets")
 

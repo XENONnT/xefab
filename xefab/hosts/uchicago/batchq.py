@@ -1,10 +1,11 @@
+import uuid
 from io import BytesIO
 from typing import List
-import uuid
-from xefab.utils import console
-from fabric.tasks import task
-from fabric.connection import Connection
 
+from fabric.connection import Connection
+from fabric.tasks import task
+
+from xefab.utils import console
 
 sbatch_template = """#!/bin/bash
 #SBATCH --job-name={jobname}

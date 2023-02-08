@@ -2,29 +2,40 @@ import contextlib
 import errno
 import os
 import socket
-from typing import Optional
 import time
 from types import TracebackType
-from typing import Optional, Type, Union, List
+from typing import List, Optional, Type, Union
 
+import fsspec
+import pandas as pd
+from fabric.connection import Connection
+from invoke.context import Context
+from invoke.util import enable_logging
+from rich import box
 from rich.console import Console, RenderableType
 from rich.jupyter import JupyterMixin
+from rich.layout import Layout
 from rich.live import Live
+from rich.panel import Panel
 from rich.spinner import Spinner
 from rich.style import StyleType
-from rich.panel import Panel
-from rich.layout import Layout
-from rich import box
-import pandas as pd
-from invoke.util import enable_logging
 from rich.table import Table
-
 
 console = Console()
 
 
 if os.environ.get("XEFAB_DEBUG") in ("1", "true", "True"):
     enable_logging()
+
+
+def filesystem(c: Union[Connection, Context]):
+    """Get a fsspec filesystem object from a fabric Connection/Invoke Context object."""
+    if isinstance(c, Connection):
+        return fsspec.filesystem(
+            "sftp", host=c.host, username=c.user, port=c.port, **c.connect_kwargs
+        )
+    else:
+        return fsspec.filesystem("file")
 
 
 def get_open_port(start=5000, end=None, bind_address="", *socket_args, **socket_kwargs):

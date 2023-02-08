@@ -1,4 +1,5 @@
 from xefab.collection import XefabCollection
+
 from .condorq_task import condorq
 
 namespace = XefabCollection("osg")

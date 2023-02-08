@@ -14,7 +14,6 @@ from xefab.utils import console, get_open_port
 from .squeue_task import parse_squeue_output
 from .utils import print_splash
 
-
 SPLASH_SCREEN = r"""
  __   __ ______  _   _   ____   _   _      _______ 
  \ \ / /|  ____|| \ | | / __ \ | \ | |    |__   __|

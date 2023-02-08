@@ -1,6 +1,7 @@
-from fabric.tasks import task
-from xefab.utils import console
 import pandas as pd
+from fabric.tasks import task
+
+from xefab.utils import console
 
 
 def add_recipient(

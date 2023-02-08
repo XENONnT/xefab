@@ -1,6 +1,6 @@
 from xefab.collection import XefabCollection
 
-from . import base, install, secrets, admin, github
+from . import admin, base, github, install, secrets
 
 namespace = XefabCollection.from_module(base, "root")
 

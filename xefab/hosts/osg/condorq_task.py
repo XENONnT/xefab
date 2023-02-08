@@ -1,9 +1,9 @@
 import datetime
+
 import pandas as pd
 from fabric.tasks import task
 
 from xefab.utils import console, df_to_table
-
 
 slots = {
     "OWNER": 1,

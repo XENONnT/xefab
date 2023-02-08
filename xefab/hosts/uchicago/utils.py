@@ -1,7 +1,7 @@
-from xefab.utils import console
-from rich.panel import Panel
 from fabric.tasks import task
+from rich.panel import Panel
 
+from xefab.utils import console
 
 SPLASH_SCREEN = r"""
  __   __ ______  _   _   ____   _   _      _______ 

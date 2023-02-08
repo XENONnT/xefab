@@ -1,9 +1,11 @@
 import json
 
 from fabric.tasks import task
+
 from xefab.utils import console
-from .install import ensure_dependency, github_cli
+
 from .admin import add_recipient
+from .install import ensure_dependency, github_cli
 
 
 def github_api_call(

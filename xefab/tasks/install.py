@@ -1,8 +1,10 @@
 import json
 
 from fabric.tasks import task
+
 from xefab.utils import console
-from .base import which, get_system, file_exists
+
+from .base import file_exists, get_system, which
 
 CONDA_LINKS = {
     "linux": "https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh",
