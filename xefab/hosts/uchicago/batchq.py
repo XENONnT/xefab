@@ -1,6 +1,4 @@
-from io import BytesIO, StringIO
-import os
-import tempfile
+from io import BytesIO
 from typing import List
 import uuid
 from xefab.utils import console
@@ -75,7 +73,7 @@ def submit_job(
     hours=None,
 ):
     """
-    Submit a job to the dali batch queue
+    Create and submit a job to SLURM job queue on the remote host.
     EXAMPLE
         from utilix import batchq
         import time

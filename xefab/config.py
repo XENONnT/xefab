@@ -71,6 +71,9 @@ class Config(FabricConfig):
         else:
             config = {"hostname": hostname}
 
+        if "user" not in config:
+            config["user"] = console.input(f"Enter username for {hostname}: ")
+
         ssh_config = {"host": host, "config": config}
 
         self.base_ssh_config._config.insert(0, ssh_config)
