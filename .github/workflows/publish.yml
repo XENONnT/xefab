@@ -1,6 +1,6 @@
 name: Publish package
 on:
-  push:
+  release:
     tags:
       - "v*.*.*"
 jobs:
