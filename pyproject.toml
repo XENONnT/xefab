@@ -26,6 +26,7 @@ appdirs = "^1.4.4"
 pandas = "*"
 gnupg = "^2.3.1"
 pymongo = "*"
+fsspec = "^2023.1.0"
 
 [tool.poetry.dev-dependencies]
 bumpversion = "*"

@@ -14,7 +14,6 @@ from xefab.utils import console, get_open_port
 from .squeue_task import parse_squeue_output
 from .utils import print_splash
 
-
 SPLASH_SCREEN = r"""
  __   __ ______  _   _   ____   _   _      _______ 
  \ \ / /|  ____|| \ | | / __ \ | \ | |    |__   __|
@@ -110,23 +109,22 @@ def start_jupyter(
 
     print = console.print
 
-
     unique_id = "".join(choices(ascii_lowercase, k=6))
 
     if image_dir is None:
-        image_dir = '/project2/lgrandi/xenonnt/singularity-images'
+        image_dir = "/project2/lgrandi/xenonnt/singularity-images"
 
     REMOTE_HOME = f"/home/{c.user}"
     if notebook_dir is None:
         notebook_dir = REMOTE_HOME
     output_folder = f"{REMOTE_HOME}/straxlab"
-    
+
     if remote_port is None:
         remote_port = random.randrange(15000, 20000)
 
     if partition is None:
         partition = "dali" if c.original_host == "dali" else "xenon1t"
-    
+
     if binds is None:
         binds = "/project2, /scratch, /dali"
 
@@ -135,7 +133,7 @@ def start_jupyter(
 
     bind_str = " ".join([f"--bind {bind}" for bind in binds])
 
-    console.log(f"Using partition {partition}")
+    print(f"Using partition {partition}")
 
     local_port = get_open_port(start=local_port)
     env_vars = {}
@@ -146,7 +144,7 @@ def start_jupyter(
     with console.status("Checking if job folder exists...") as status:
         if not c.run(f"test -d {output_folder}", warn=True).ok:
             status.update("Creating job folder...")
-            c.run("mkdir -p " + output_folder)        
+            c.run("mkdir -p " + output_folder)
 
     if env == "singularity":
         s_container = f"{image_dir}/xenonnt-{tag}.simg"
@@ -158,7 +156,7 @@ def start_jupyter(
             PORT=remote_port,
             BIND_STR=bind_str,
             USER=c.user,
-            )
+        )
         starter_script_fd = StringIO(starter_script)
         with console.status(f"Copying starter script to {c.host}:{starter_path} ..."):
             c.put(starter_script_fd, remote=starter_path)
@@ -193,7 +191,7 @@ def start_jupyter(
     else:
         qos = partition
 
-    #FIXME: check if a job is already running.
+    # FIXME: check if a job is already running.
 
     _want_to_make_reservation = partition == "xenon1t" and (not bypass_reservation)
     if ram > 16000 and _want_to_make_reservation:
@@ -218,7 +216,6 @@ def start_jupyter(
                 print("Notebook reservation does not exist, submitting a regular job.")
                 use_reservation = False
 
-    
     with console.status("Checking for existing jobs..."):
         result = c.run(f"squeue -u {c.user} -n straxlab", hide=True, warn=True)
         df = parse_squeue_output(result.stdout)
@@ -311,12 +308,10 @@ def start_jupyter(
                 continue
             break
         else:
-            raise RuntimeError(
-                "Timeout reached while waiting for jupyter to start."
-            )
+            raise RuntimeError("Timeout reached while waiting for jupyter to start.")
 
         print("\nJupyter started succesfully.")
-        print(f"\t Remote URL: {url}")
+        print(f"Remote URL: \n{url}\n")
         remote_host, remote_port = url.split("/")[2].split(":")
         if "token" in url:
             token = url.split("?")[1].split("=")[1]
@@ -325,10 +320,9 @@ def start_jupyter(
             token = ""
             local_url = f"http://localhost:{local_port}"
 
-    
     msg = f"Forwarding remote address {remote_host}:{remote_port} to local port {local_port}..."
     with console.status(msg) as status:
-        print(f"You can access the notebook at {local_url}\n")
+        print(f"You can access the notebook at \n{local_url}\n")
 
         if detached:
             c.local(
@@ -388,6 +382,8 @@ def start_jupyter(
                             print("job executable file removed.")
                             break
                     else:
-                        print("Could not job executable. Please remove it manually. Path: {starter_path}")
-                        
+                        print(
+                            "Could not job executable. Please remove it manually. Path: {starter_path}"
+                        )
+
     print("Goodbye!")

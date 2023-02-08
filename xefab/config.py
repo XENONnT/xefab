@@ -11,7 +11,6 @@ from rich.console import Console
 from xefab.entrypoints import get_entry_points
 from xefab.utils import console
 
-
 dirs = appdirs.AppDirs("xefab")
 
 XEFAB_CONFIG = os.getenv(
