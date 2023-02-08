@@ -245,9 +245,7 @@ def start_jupyter(
     )
 
     if use_reservation:
-        with console.status(
-            "Notebook reservation requested. Checking availability..."
-        ):
+        with console.status("Notebook reservation requested. Checking availability..."):
             result = c.run("scontrol show reservations", hide=True, warn=True)
             if result.failed or "ReservationName=xenon_notebook" not in result.stdout:
                 print("Notebook reservation does not exist, submitting a regular job.")

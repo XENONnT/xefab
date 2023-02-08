@@ -21,14 +21,15 @@ XEFAB_CONFIG = os.getenv(
 
 class Config(FabricConfig):
     """Settings for xefab."""
+
     MONGO_CLIENTS = {}
 
     prefix = "xefab"
     xenon_config = None
 
     def __init__(self, *args, **kwargs):
-        kwargs.setdefault("system_prefix", dirs.site_config_dir + '/')
-        kwargs.setdefault("user_prefix", dirs.user_config_dir + '/')
+        kwargs.setdefault("system_prefix", dirs.site_config_dir + "/")
+        kwargs.setdefault("user_prefix", dirs.user_config_dir + "/")
         super().__init__(*args, **kwargs)
         self.load_xenon_config()
 
@@ -52,7 +53,7 @@ class Config(FabricConfig):
 
         if hostnames is None:
             return
-            
+
         if not isinstance(hostnames, list):
             debug(
                 "xefab: hostnames must be a list or a string,"
@@ -111,14 +112,14 @@ class Config(FabricConfig):
             os.path.join(dirs.user_config_dir, ".xenon_config"),
             os.path.join(os.getcwd(), ".xenon_config"),
             os.getenv("XENON_CONFIG", "~/.xenon_config"),
-                 ]
+        ]
 
         return paths
 
     def load_xenon_config(self):
         """Load the xenon config file."""
         self.xenon_config = configparser.ConfigParser()
-        self.merge() # Make sure we have the latest config
+        self.merge()  # Make sure we have the latest config
         paths = getattr(self, "xenon_config_paths", [])
         if isinstance(paths, str):
             paths = paths.split(",")
@@ -131,34 +132,41 @@ class Config(FabricConfig):
     def _mongo_client(self, experiment, url=None, user=None, password=None):
         import pymongo
 
-        if experiment not in ['xe1t', 'xent']:
-            raise ValueError(f"experiment must be 'xe1t' or 'xent'. You passed f{experiment}")
+        if experiment not in ["xe1t", "xent"]:
+            raise ValueError(
+                f"experiment must be 'xe1t' or 'xent'. You passed f{experiment}"
+            )
 
         if not url:
-            url = self.xenon_config.get('RunDB', f'{experiment}_url')
+            url = self.xenon_config.get("RunDB", f"{experiment}_url")
         if not user:
-            user = self.xenon_config.get('RunDB', f'{experiment}_user')
+            user = self.xenon_config.get("RunDB", f"{experiment}_user")
         if not password:
-            password = self.xenon_config.get('RunDB', f'{experiment}_password')
+            password = self.xenon_config.get("RunDB", f"{experiment}_password")
 
         # build other client kwargs
-        max_pool_size = self.xenon_config.get('RunDB', 'max_pool_size', fallback=100)
-        socket_timeout = self.xenon_config.get('RunDB', 'socket_timeout', fallback=60000)
-        connect_timeout = self.xenon_config.get('RunDB', 'connect_timeout', fallback=60000)
+        max_pool_size = self.xenon_config.get("RunDB", "max_pool_size", fallback=100)
+        socket_timeout = self.xenon_config.get(
+            "RunDB", "socket_timeout", fallback=60000
+        )
+        connect_timeout = self.xenon_config.get(
+            "RunDB", "connect_timeout", fallback=60000
+        )
 
         uri = f"mongodb://{user}:{password}@{url}"
-        if uri not in self.MONGO_CLIENTS:    
-            self.MONGO_CLIENTS[uri] = pymongo.MongoClient(uri, 
-                                                        readPreference='secondaryPreferred',
-                                                        maxPoolSize=max_pool_size,
-                                                        socketTimeoutMS=socket_timeout,
-                                                        connectTimeoutMS=connect_timeout
-                                                        )
+        if uri not in self.MONGO_CLIENTS:
+            self.MONGO_CLIENTS[uri] = pymongo.MongoClient(
+                uri,
+                readPreference="secondaryPreferred",
+                maxPoolSize=max_pool_size,
+                socketTimeoutMS=socket_timeout,
+                connectTimeoutMS=connect_timeout,
+            )
         return self.MONGO_CLIENTS[uri]
 
     def _mongo_database(self, experiment, database=None, **kwargs):
         if not database:
-            database = self.xenon_config.get('RunDB', f'{experiment}_database')
+            database = self.xenon_config.get("RunDB", f"{experiment}_database")
         client = self._mongo_client(experiment, **kwargs)
         return client[database]
 
@@ -166,8 +174,8 @@ class Config(FabricConfig):
         client = self._mongo_database(experiment, **kwargs)
         return client[collection]
 
-    def xent_collection(self, collection='runs', **kwargs):
-        return self._mongo_collection('xent', collection, **kwargs)
+    def xent_collection(self, collection="runs", **kwargs):
+        return self._mongo_collection("xent", collection, **kwargs)
 
-    def xe1t_collection(self, collection='runs_new', **kwargs):
-        return self._mongo_collection('xe1t', collection, **kwargs)
+    def xe1t_collection(self, collection="runs_new", **kwargs):
+        return self._mongo_collection("xe1t", collection, **kwargs)

@@ -15,9 +15,9 @@ SPLASH_SCREEN = r"""
 
 """
 
+
 @task
 def print_splash(c):
     """Print the splash screen."""
 
-    console.print(Panel.fit(SPLASH_SCREEN, title='Welcome'))
-
+    console.print(Panel.fit(SPLASH_SCREEN, title="Welcome"))

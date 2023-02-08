@@ -1,4 +1,3 @@
-
 from fabric.tasks import task
 from xefab.utils import console
 from invoke.context import DataProxy
@@ -6,7 +5,7 @@ from invoke.context import DataProxy
 
 def printable(d):
     if isinstance(d, (dict, DataProxy)):
-        return {k: printable(v) for k,v in d.items()}
+        return {k: printable(v) for k, v in d.items()}
     elif isinstance(d, type):
         return d.__qualname__
     return d

@@ -9,9 +9,13 @@ from .batchq import submit_job
 namespace = XefabCollection("midway")
 
 namespace.configure(
-    {"hostnames": ["midway2.rcc.uchicago.edu", 
-                "midway2-login1.rcc.uchicago.edu", 
-                "midway2-login2.rcc.uchicago.edu"]}
+    {
+        "hostnames": [
+            "midway2.rcc.uchicago.edu",
+            "midway2-login1.rcc.uchicago.edu",
+            "midway2-login2.rcc.uchicago.edu",
+        ]
+    }
 )
 
 namespace.add_task(squeue)

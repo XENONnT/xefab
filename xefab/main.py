@@ -12,15 +12,23 @@ from xefab.config import Config
 
 
 class XeFab(Fab):
-    """XeSites CLI"""
+    """XeFab CLI"""
 
     def parse_collection(self):
         if self.namespace is None:
             self.namespace = XefabCollection.from_module(tasks, name="root")
             self.namespace.load_objects_from_entry_points()
 
-        if self.core.unparsed and self.core.unparsed[0] in self.namespace.collections:
-            sitename = self.core.unparsed.pop(0)
+        if (
+            self.core.unparsed
+            and self.core.unparsed[0].split(".")[0] in self.namespace.collections
+        ):
+            if "." in self.core.unparsed[0]:
+                sitename, _, self.core.unparsed[0] = self.core.unparsed[0].partition(
+                    "."
+                )
+            else:
+                sitename = self.core.unparsed.pop(0)
             self.namespace = self.namespace.collections[sitename]
             hostnames = self.namespace._configuration.get("hostnames", None)
             debug(f"xefab: {sitename} hostnames: {hostnames}")

@@ -30,7 +30,9 @@ class XefabCollection(Collection):
         """Load tasks/collections from entry points."""
 
         if not (group and isinstance(group, str)):
-            raise ValueError(f"Entrypoint groups must be non-empty strings. got {group}")
+            raise ValueError(
+                f"Entrypoint groups must be non-empty strings. got {group}"
+            )
 
         if not group.startswith(self.entrypoint_prefix):
             group = ".".join([self.entrypoint_prefix, group])

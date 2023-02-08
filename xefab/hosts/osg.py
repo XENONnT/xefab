@@ -11,20 +11,22 @@ namespace = XefabCollection("osg")
 namespace.configure({"hostnames": "login.xenon.ci-connect.net"})
 
 slots = {
-    'OWNER': 1,
-    'BATCH_NAME': 1, 
-    'SUBMITTED': 2,
-    'DONE': 1,
-    'RUN': 1,
-    'IDLE': 1,
-    'HOLD': 1,
-    'TOTAL': 1,
-    'JOB_IDS': 3,
+    "OWNER": 1,
+    "BATCH_NAME": 1,
+    "SUBMITTED": 2,
+    "DONE": 1,
+    "RUN": 1,
+    "IDLE": 1,
+    "HOLD": 1,
+    "TOTAL": 1,
+    "JOB_IDS": 3,
 }
 
 mergers = {
-    "SUBMITTED": lambda x: pd.to_datetime(f"{datetime.datetime.utcnow().year}/{x[0]}T{x[1]}"),
-    "JOB_IDS": lambda x: "".join(x)
+    "SUBMITTED": lambda x: pd.to_datetime(
+        f"{datetime.datetime.utcnow().year}/{x[0]}T{x[1]}"
+    ),
+    "JOB_IDS": lambda x: "".join(x),
 }
 
 
@@ -35,29 +37,28 @@ def parse_row(line, columns):
         value = [parts.pop(0) for _ in range(slots[column])]
         merger = mergers.get(column, lambda x: x[0])
         row[column] = merger(value)
-        
+
     return row
 
 
 def parse_condorq_output(condorq_output):
-    lines = condorq_output.split('\n')
+    lines = condorq_output.split("\n")
     rows = []
     columns = []
     for line in lines:
-        if line.startswith('OWNER'):
+        if line.startswith("OWNER"):
             columns = line.split()
             continue
 
-
         if not columns:
             continue
-            
+
         if not line:
             break
 
         row = parse_row(line, columns)
         rows.append(row)
-    
+
     df = pd.DataFrame(rows, columns=columns).dropna(how="all")
     return df
 
@@ -69,10 +70,14 @@ def condor_q(c, all: bool = False, hide: bool = False):
         cmd += " -allusers"
     result = c.run(cmd, hide=True, warn=True)
     if result.failed:
-        console.print(f"Remote execution of {cmd} on {c.host} failed. stderr: {result.stderr}")
+        console.print(
+            f"Remote execution of {cmd} on {c.host} failed. stderr: {result.stderr}"
+        )
     df = parse_condorq_output(result.stdout)
     if not hide:
         table = df_to_table(df)
         console.print(table)
     return df
+
+
 namespace.add_task(condor_q)
