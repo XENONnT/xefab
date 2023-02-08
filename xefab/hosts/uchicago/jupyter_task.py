@@ -134,7 +134,7 @@ def start_jupyter(
 
     bind_str = " ".join([f"--bind {bind}" for bind in binds])
 
-    console.log(f"Using partition {partition}")
+    print(f"Using partition {partition}")
 
     local_port = get_open_port(start=local_port)
     env_vars = {}
@@ -312,7 +312,7 @@ def start_jupyter(
             raise RuntimeError("Timeout reached while waiting for jupyter to start.")
 
         print("\nJupyter started succesfully.")
-        print(f"\t Remote URL: {url}")
+        print(f"Remote URL: \n{url}\n")
         remote_host, remote_port = url.split("/")[2].split(":")
         if "token" in url:
             token = url.split("?")[1].split("=")[1]
@@ -323,7 +323,7 @@ def start_jupyter(
 
     msg = f"Forwarding remote address {remote_host}:{remote_port} to local port {local_port}..."
     with console.status(msg) as status:
-        print(f"You can access the notebook at {local_url}\n")
+        print(f"You can access the notebook at \n{local_url}\n")
 
         if detached:
             c.local(
