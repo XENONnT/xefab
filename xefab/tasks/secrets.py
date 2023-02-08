@@ -30,21 +30,12 @@ def setup(
 namespace.add_task(setup)
 
 
-@task
-def github_token(c):
-    result = c.run(f"gh auth token", hide=True, warn=True)
-    if result.failed:
-        raise RuntimeError(f"Failed to get github token: {result.stderr}")
-
-    token = result.stdout.strip()
-    console.print(token)
-    return token
-
-
-namespace.add_task(github_token)
-
-
-@task(ensure_dependency("chezmoi", installer=chezmoi))
+@task(
+    pre=[
+        ensure_dependency("chezmoi", installer=chezmoi),
+        ensure_dependency("gopass", installer=chezmoi),
+    ]
+)
 def setup_utilix_config(c, apply: bool = False):
     command = "chezmoi init https://github.com/XENONnT/dotfiles.git"
     result = c.run(command, hide=False, warn=True)

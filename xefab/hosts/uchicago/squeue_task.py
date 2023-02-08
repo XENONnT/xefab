@@ -25,7 +25,6 @@ def parse_squeue_output(squeue_output):
 def squeue(
     c: Connection, user: str = "me", partition: str = None, out: str = ""
 ) -> pd.DataFrame:
-
     """Get the job-queue status."""
 
     command = "squeue"

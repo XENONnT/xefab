@@ -3,7 +3,6 @@ import sys
 
 from fabric.executor import Executor
 from fabric.main import Fab
-from invoke.collection import Collection
 from invoke.util import debug
 
 from xefab import __version__, tasks

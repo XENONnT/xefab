@@ -1,14 +1,9 @@
 import datetime
 import pandas as pd
-
 from fabric.tasks import task
-from xefab.collection import XefabCollection
+
 from xefab.utils import console, df_to_table
 
-
-namespace = XefabCollection("osg")
-
-namespace.configure({"hostnames": "login.xenon.ci-connect.net"})
 
 slots = {
     "OWNER": 1,
@@ -64,7 +59,7 @@ def parse_condorq_output(condorq_output):
 
 
 @task(aliases=["job-queue"])
-def condor_q(c, all: bool = False, hide: bool = False):
+def condorq(c, all: bool = False, hide: bool = False):
     cmd = "condor_q"
     if all:
         cmd += " -allusers"
@@ -78,6 +73,3 @@ def condor_q(c, all: bool = False, hide: bool = False):
         table = df_to_table(df)
         console.print(table)
     return df
-
-
-namespace.add_task(condor_q)

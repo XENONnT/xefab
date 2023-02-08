@@ -98,7 +98,6 @@ class TaskLiveDisplay(JupyterMixin):
         show_log: bool = False,
         max_rows: int = 30,
     ):
-
         self._taskname = taskname
         self._status = status
         self._log_buffer = log_buffer or []
