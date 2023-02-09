@@ -3,14 +3,17 @@ import errno
 import os
 import socket
 import time
+from inspect import Parameter
 from types import TracebackType
 from typing import List, Optional, Type, Union
 
 import fsspec
 import pandas as pd
+from decopatch import DECORATED, function_decorator
 from fabric.connection import Connection
 from invoke.context import Context
 from invoke.util import enable_logging
+from makefun import wraps
 from rich import box
 from rich.console import Console, RenderableType
 from rich.jupyter import JupyterMixin
@@ -21,11 +24,41 @@ from rich.spinner import Spinner
 from rich.style import StyleType
 from rich.table import Table
 
+from xefab.utils import console
+
 console = Console()
 
 
 if os.environ.get("XEFAB_DEBUG") in ("1", "true", "True"):
     enable_logging()
+
+
+@function_decorator
+def try_local(exception=Exception, f=DECORATED):
+    """Try to run a task locally, if it fails, run it remotely.
+    Can be used as a decorator or as a function.
+    if the first argument after the function is a Connection
+    the function is called immediately, otherwise a wrapper is returned.
+    """
+    extra = Parameter(
+        "force_remote",
+        kind=Parameter.POSITIONAL_OR_KEYWORD,
+        annotation=bool,
+        default=False,
+    )
+
+    @wraps(f, append_args=extra)
+    def wrapper(c, *args, force_remote=False, **kwargs):
+        if isinstance(c, Connection) and not force_remote:
+            try:
+                inv_ctx = Context(config=c.config)
+                return f(inv_ctx, *args, **kwargs)
+            except exception as e:
+                console.print(f"Failed to run locally: {e}")
+                console.print("Running remotely instead.")
+        return f(c, *args, **kwargs)
+
+    return wrapper
 
 
 def filesystem(c: Union[Connection, Context]):
@@ -90,118 +123,3 @@ def df_to_table(
         rich_table.add_row(*row)
 
     return rich_table
-
-
-class TaskLiveDisplay(JupyterMixin):
-    def __init__(
-        self,
-        taskname: str,
-        *,
-        status: RenderableType = None,
-        print_buffer: Union[str, List[str]] = None,
-        log_buffer: Union[str, List[str]] = None,
-        console: Optional[Console] = None,
-        spinner: str = "dots",
-        spinner_style: StyleType = "status.spinner",
-        speed: float = 1.0,
-        refresh_per_second: float = 12.5,
-        transient: bool = False,
-        show_log: bool = False,
-        max_rows: int = 30,
-    ):
-        self._taskname = taskname
-        self._status = status
-        self._log_buffer = log_buffer or []
-        self._print_buffer = print_buffer or []
-        self._show_log = show_log
-        self._max_rows = max_rows
-        self.spinner = spinner
-        self.spinner_style = spinner_style
-        self.speed = speed
-        self._spinner = Spinner(
-            spinner, text=self._status, style=self.spinner_style, speed=self.speed
-        )
-
-        self._live = Live(
-            self,
-            console=console,
-            auto_refresh=True,
-            refresh_per_second=refresh_per_second,
-            transient=transient,
-        )
-
-    @property
-    def show_log(self):
-        return self._show_log
-
-    @show_log.setter
-    def show_log(self, value: bool):
-        self._show_log = value
-
-    def render(self):
-        layout = Layout()
-        layout.split_column(
-            Layout(name="header"),
-            Layout(name="output"),
-            Layout(name="status"),
-        )
-        layout["output"].split_row(
-            Layout(name="print"),
-            Layout(name="log"),
-        )
-        layout.size = self._max_rows + 5
-        layout["output"].size = self._max_rows
-        layout["header"].size = 2
-        layout["status"].size = 2
-        layout["status"].visible = self._status is not None
-        layout["output"]["log"].visible = self.show_log
-
-        header_panel = Panel("", subtitle=self._taskname, box=box.MINIMAL)
-        print_panel = Panel(
-            "\n".join(self._print_buffer)[: self._max_rows], title="Output", expand=True
-        )
-        log_panel = Panel(
-            "\n".join(self._log_buffer)[: self._max_rows], title="Log", expand=True
-        )
-
-        layout["header"].update(header_panel)
-        layout["output"]["print"].update(print_panel)
-        layout["output"]["log"].update(log_panel)
-        if self._status is not None:
-            self._spinner.update(text=self._status)
-            layout["status"].update(self._spinner)
-        else:
-            layout["status"].update("")
-        return layout
-
-    def status(self, value: RenderableType):
-        self._status = value
-
-    def log(self, *args):
-        self._log_buffer.extend(map(str, args))
-
-    def print(self, *args):
-        self._print_buffer.extend(map(str, args))
-
-    def start(self) -> None:
-        """Start the status animation."""
-        self._live.start()
-
-    def stop(self) -> None:
-        """Stop the spinner animation."""
-        self._live.stop()
-
-    def __rich__(self) -> RenderableType:
-        return self.render()
-
-    def __enter__(self) -> "Status":
-        self.start()
-        return self
-
-    def __exit__(
-        self,
-        exc_type: Optional[Type[BaseException]],
-        exc_val: Optional[BaseException],
-        exc_tb: Optional[TracebackType],
-    ) -> None:
-        self.stop()
