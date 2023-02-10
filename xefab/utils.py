@@ -2,10 +2,8 @@ import contextlib
 import errno
 import os
 import socket
-import time
 from inspect import Parameter
-from types import TracebackType
-from typing import List, Optional, Type, Union
+from typing import Optional, Union
 
 import fsspec
 import pandas as pd
@@ -14,19 +12,18 @@ from fabric.connection import Connection
 from invoke.context import Context
 from invoke.util import enable_logging
 from makefun import wraps
-from rich import box
-from rich.console import Console, RenderableType
-from rich.jupyter import JupyterMixin
-from rich.layout import Layout
-from rich.live import Live
-from rich.panel import Panel
-from rich.spinner import Spinner
-from rich.style import StyleType
+from rich.console import Console
 from rich.table import Table
 
-from xefab.utils import console
 
 console = Console()
+
+
+SHELL_PROFILE_FILES = {
+    "sh": ["~/.profile"],
+    "bash": ["~/.profile", "~/.bash_profile"],
+    "zsh": ["~/.profile", "~/.zprofile"],
+}
 
 
 if os.environ.get("XEFAB_DEBUG") in ("1", "true", "True"):

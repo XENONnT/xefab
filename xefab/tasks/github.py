@@ -3,12 +3,15 @@ import tempfile
 
 from fabric.connection import Connection
 from fabric.tasks import task
+from xefab.collection import XefabCollection
 
 from xefab.utils import console, try_local
 
 from .admin import add_recipient
 from .install import ensure_dependency, github_cli
 from .shell import which
+
+namespace = XefabCollection("github")
 
 
 def github_api_call(
@@ -131,3 +134,12 @@ def clone(c, repo: str, org="XENONnT", branch: str = "master", dest: str = None)
     else:
         c.run(f"git clone git@github.com:{org}/{repo}.git {dest}")
     console.print(f"Cloned {repo} to {dest}.")
+
+
+namespace.add_task(clone)
+namespace.add_task(is_private)
+namespace.add_task(is_public)
+namespace.add_task(token)
+namespace.add_task(xenon1t_members)
+namespace.add_task(xenonnt_keys)
+namespace.add_task(xenonnt_members)

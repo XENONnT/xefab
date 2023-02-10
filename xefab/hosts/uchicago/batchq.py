@@ -57,7 +57,19 @@ rm {filepath}
     return new_job_string
 
 
-@task
+@task(help={
+    "command": "the command to execute within the job.",
+    "partition": "partition to submit the job to.",
+    "qos": "qos to submit the job to.",
+    "account": "account to submit the job to.",
+    "jobname": "how to name this job.",
+    "dry_run": "Just print the job file.",
+    "mem_per_cpu": "mb requested for job.",
+    "container": "name of the container to activate",
+    "bind": "which paths to add to the container",
+    "cpus_per_task": "cpus requested for job",
+    "hours": "max hours of a job",
+    })
 def submit_job(
     c: Connection,
     command: str,
@@ -75,27 +87,6 @@ def submit_job(
 ):
     """
     Create and submit a job to SLURM job queue on the remote host.
-    EXAMPLE
-        from utilix import batchq
-        import time
-        job_log = 'job.log'
-        batchq.submit_job('echo "say hi"', log=job_log)
-        time.sleep(10) # Allow the job to run
-        for line in open(job_log):
-            print(line)
-    :param jobstring: the command to execute
-    :param partition: partition to submit the job to
-    :param qos: qos to submit the job to
-    :param account: account to submit the job to
-    :param jobname: how to name this job
-    :param dry_run: only print how the job looks like
-    :param mem_per_cpu: mb requested for job
-    :param container: name of the container to activate
-    :param bind: which paths to add to the container
-    :param cpus_per_task: cpus requested for job
-    :param hours: max hours of a job
-    :param kwargs: are ignored
-    :return: None
     """
     console.print(f"Using {c.host} as host")
     console.print(f"job command: {command}")

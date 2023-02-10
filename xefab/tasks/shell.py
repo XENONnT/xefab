@@ -3,10 +3,30 @@ from fabric.tasks import task
 
 from xefab.utils import console
 
+
 SHELL_PROFILE_FILES = {
+    "sh": ["~/.profile"],
     "bash": ["~/.profile", "~/.bash_profile"],
     "zsh": ["~/.profile", "~/.zprofile"],
 }
+
+
+@task(default=True)
+def shell(c: Connection, shell: str = None):
+    """Open interactive shell on remote host."""
+    if shell is None:
+        shell = c.config.run.shell
+    if isinstance(c, Connection):
+        c.shell()
+    else:
+        while True:
+            try:
+                cmd = input(f"{shell}:~$ ")
+                if cmd == "exit":
+                    break
+                c.run(cmd, shell=shell)
+            except KeyboardInterrupt:
+                break
 
 
 @task
@@ -100,21 +120,22 @@ def path(
     local: bool = False,
     hide: bool = False,
 ):
-    if profile and shell is None:
+    if shell is None:
         shell = "bash"
+
     cmd = "echo $PATH"
-
-    if profile:
-        if is_file(c, f"/etc/profile", hide=True):
-            cmd = f"source /etc/profile && {cmd}"
-        for f in SHELL_PROFILE_FILES.get(shell):
-            if is_file(c, f, hide=True):
-                fpath = f.replace("~/", f"/home/{c.user}/")
-                cmd = f"source {fpath} && {cmd}"
-
+    
     if local and isinstance(c, Connection):
         result = c.local(cmd, hide=True, warn=True, shell=f"/bin/{shell}")
     else:
+        if profile:
+            if is_file(c, f"/etc/profile", hide=True):
+                cmd = f"source /etc/profile && {cmd}"
+            for f in SHELL_PROFILE_FILES.get(shell):
+                if is_file(c, f, hide=True):
+                    fpath = f.replace("~/", f"/home/{c.user}/")
+                    cmd = f"source {fpath} && {cmd}"
+
         result = c.run(cmd, hide=True, warn=True, shell=f"/bin/{shell}")
     assert (
         result.ok
