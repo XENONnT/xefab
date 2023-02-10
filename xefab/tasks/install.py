@@ -1,10 +1,11 @@
 import json
+from typing import Callable, Optional
 
 from fabric.tasks import task
 
 from xefab.utils import console
 
-from .base import file_exists, get_system, which
+from .shell import get_system, which
 
 CONDA_LINKS = {
     "linux": "https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh",
@@ -13,10 +14,10 @@ CONDA_LINKS = {
 }
 
 
-def ensure_dependency(dep, installer=None):
+def ensure_dependency(dep, local: bool = False, installer: Optional[Callable] = None):
     @task
     def wrapper(c, *args, **kwargs):
-        if which(c, dep, hide=True):
+        if which(c, dep, local=local, hide=True):
             return
         if installer is not None:
             installer(c, *args, **kwargs)
@@ -46,7 +47,7 @@ def go(c, force: bool = False):
 
 @task(pre=[ensure_dependency("go", installer=go)])
 def gopass(c, force: bool = False):
-    if which(c, "gopass", bash_profile=True, hide=True) and not force:
+    if which(c, "gopass", hide=True) and not force:
         console.print("Gopass already installed on system.")
         return
     c.run("go install github.com/gopasspw/gopass@latest")
@@ -55,7 +56,7 @@ def gopass(c, force: bool = False):
 
 @task
 def chezmoi(c, force: bool = False):
-    if which(c, "chezmoi", bash_profile=True, hide=True) and not force:
+    if which(c, "chezmoi", hide=True) and not force:
         console.print("Chezmoi already installed on system.")
         return
     c.run('sh -c "$(curl -fsLS get.chezmoi.io)"')
@@ -65,7 +66,7 @@ def chezmoi(c, force: bool = False):
 @task
 def github_cli(c, force: bool = False):
     console.print("Checking for existing installation.")
-    have_gh = which(c, "gh", bash_profile=True, hide=True)
+    have_gh = which(c, "gh", hide=True)
 
     if have_gh and not force:
         console.print("Github CLI already installed on system.")
@@ -73,7 +74,7 @@ def github_cli(c, force: bool = False):
 
     console.print("Attempting to install Github CLI.")
 
-    if which(c, "conda", bash_profile=True, hide=True):
+    if which(c, "conda", hide=True):
         console.print("Installing Github CLI via conda.")
         c.run("conda install gh --channel conda-forge")
         return
@@ -117,7 +118,7 @@ def github_cli(c, force: bool = False):
 
 @task(pre=[ensure_dependency("wget")])
 def gnupg(c, force: bool = False):
-    if which(c, "gpg", bash_profile=True, hide=True) and not force:
+    if which(c, "gpg", hide=True) and not force:
         console.print("GnuPG already installed on system.")
         return
     scripts = {

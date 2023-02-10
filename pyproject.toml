@@ -27,6 +27,8 @@ pandas = "*"
 gnupg = "^2.3.1"
 pymongo = "*"
 fsspec = "^2023.1.0"
+makefun = "^1.15.0"
+decopatch = "^1.4.10"
 
 [tool.poetry.dev-dependencies]
 bumpversion = "*"

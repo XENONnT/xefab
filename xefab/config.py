@@ -94,7 +94,7 @@ class Config(FabricConfig):
 
         ours = {
             "tasks": {
-                "collection_name": "xefab",
+                "collection_name": "xetasks",
             },
             "xenon_config_paths": Config.get_xenon_config_paths(),
         }

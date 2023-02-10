@@ -1,11 +1,17 @@
 import json
+import tempfile
 
+from fabric.connection import Connection
 from fabric.tasks import task
+from xefab.collection import XefabCollection
 
-from xefab.utils import console
+from xefab.utils import console, try_local
 
 from .admin import add_recipient
 from .install import ensure_dependency, github_cli
+from .shell import which
+
+namespace = XefabCollection("github")
 
 
 def github_api_call(
@@ -41,7 +47,24 @@ def github_api_call(
 
 
 @task
-def github_token(c):
+def is_public(c, repo: str, owner: str = "XENONnT"):
+    for doc in github_api_call(c, f"/users/{owner}/repos", hide=True):
+        if doc["name"] == repo:
+            return not doc["private"]
+    return False
+
+
+@task
+def is_private(c, repo: str, owner: str = "XENONnT"):
+    for doc in github_api_call(c, f"/users/{owner}/repos", hide=True):
+        if doc["name"] == repo:
+            return doc["private"]
+    return True
+
+
+@task
+@try_local
+def token(c):
     result = c.run(f"gh auth token", hide=True, warn=True)
     if result.failed:
         raise RuntimeError(f"Failed to get github token: {result.stderr}")
@@ -95,3 +118,28 @@ def xenonnt_keys(c, hide: bool = False, add: bool = False):
     if add:
         c.run("gopass sync", warn=True)
     return keys
+
+
+@task
+def clone(c, repo: str, org="XENONnT", branch: str = "master", dest: str = None):
+    if dest is None:
+        dest = repo
+    repo = f"{org}/{repo}"
+    if isinstance(c, Connection) and which(c, "gh", local=True, hide=True):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            c.local(f"gh repo clone {repo} {tmpdir}")
+            c.put(tmpdir, remote=dest)
+    elif which(c, "gh", hide=True):
+        c.run(f"gh repo clone {repo} {dest}")
+    else:
+        c.run(f"git clone git@github.com:{org}/{repo}.git {dest}")
+    console.print(f"Cloned {repo} to {dest}.")
+
+
+namespace.add_task(clone)
+namespace.add_task(is_private)
+namespace.add_task(is_public)
+namespace.add_task(token)
+namespace.add_task(xenon1t_members)
+namespace.add_task(xenonnt_keys)
+namespace.add_task(xenonnt_members)

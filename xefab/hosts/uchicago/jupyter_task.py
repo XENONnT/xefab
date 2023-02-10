@@ -335,7 +335,7 @@ def start_jupyter(
             if not no_browser:
                 c.local(f"python -m webbrowser -t {local_url}", hide=True, warn=True)
         else:
-            # Can never be too careful
+            # Can never be too careful, make sure port numbers are integers
             local_port = int(local_port)
             remote_port = int(remote_port)
             with c.forward_local(
@@ -354,36 +354,31 @@ def start_jupyter(
                     console.input()
                 except KeyboardInterrupt:
                     print("Keyboard interrupt received.")
+                except Exception as e:
+                    print(f"Exception raises: {e}")
+                    
+                try:
+                    status.update("Canceling job...")
+                    c.run(f"scancel {job_id}", hide=True)
                 except:
-                    print("Unknown error.")
+                    print(f"Could not cancel job. Please cancel it manually. Job ID: {job_id}")
                 finally:
-                    status.update("Closing tunnel and canceling job...")
-            try:
-                c.run("scancel %d" % job_id, hide=True)
-            except:
-                print("Could not cancel job. Please cancel it manually.")
-            finally:
-                if not debug:
-                    status.update("Cleaning up job files...")
-                    result = c.run("rm %s" % job_fn, hide=True, warn=True)
-                    if result.failed:
-                        print("Could not remove job batch file.")
-                    else:
-                        print("Job batch file removed.")
-                    result = c.run("rm %s" % log_fn, hide=True, warn=True)
-                    if result.failed:
-                        print("Could not remove log file.")
-                    else:
-                        print("Log file removed.")
-                    for _ in range(3):
-                        time.sleep(2)
-                        result = c.run("rm %s" % starter_path, hide=True, warn=True)
-                        if result.ok:
-                            print("job executable file removed.")
-                            break
-                    else:
-                        print(
-                            "Could not job executable. Please remove it manually. Path: {starter_path}"
-                        )
+                    if not debug:
+                        status.update("Cleaning up job files...")
+                        result = c.run(f"rm {job_fn}", hide=True, warn=True)
+                        if result.failed:
+                            print(f"Failed to remove job batch file. Please remove it manually. Path: {job_fn}")
+                        result = c.run(f"rm {log_fn}", hide=True, warn=True)
+                        if result.failed:
+                            print(f"Could not remove log file. Please remove it manually. Path: {log_fn}")
+                        for _ in range(3):
+                            time.sleep(2)
+                            result = c.run(f"rm {starter_path}", hide=True, warn=True)
+                            if result.ok:
+                                break
+                        else:
+                            print(
+                                f"Could not job executable. Please remove it manually. Path: {starter_path}"
+                            )
 
     print("Goodbye!")
