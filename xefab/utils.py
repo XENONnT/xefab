@@ -14,9 +14,13 @@ from invoke.util import enable_logging
 from makefun import wraps
 from rich.console import Console
 from rich.table import Table
+from rich.theme import Theme
+from rich.progress import Progress
 
 
-console = Console()
+custom_theme = Theme({"info": "dim cyan", "warning": "magenta", "danger": "bold red"})
+
+console = Console(theme=custom_theme)
 
 
 SHELL_PROFILE_FILES = {
@@ -120,3 +124,26 @@ def df_to_table(
         rich_table.add_row(*row)
 
     return rich_table
+
+
+class ProgressContext(Progress):
+    @contextlib.contextmanager
+    def enter_task(
+        self,
+        description,
+        total=1,
+        finished_description=None,
+        exception_description="Failed.\n {exception}",
+        raise_exceptions=True,
+    ):
+        """Start and end a task in a progress bar."""
+        task = self.add_task(description, total=total)
+        try:
+            yield task
+        except Exception as e:
+            finished_description = exception_description.format(exception=e)
+            if raise_exceptions:
+                raise e
+        finally:
+            description = finished_description or self.tasks[task].description
+            self.update(task_id=task, completed=total, description=description)

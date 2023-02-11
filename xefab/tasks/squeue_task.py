@@ -27,7 +27,7 @@ def squeue(
 ) -> pd.DataFrame:
     """Get the job-queue status."""
 
-    command = "squeue"
+    command = 'squeue --format="%.18i %.9P %.30j %.8u %.8T %.10M %.9l %.6D %R"'
 
     if user in ["*", "all"]:
         pass

@@ -124,7 +124,7 @@ def path(
         shell = "bash"
 
     cmd = "echo $PATH"
-    
+
     if local and isinstance(c, Connection):
         result = c.local(cmd, hide=True, warn=True, shell=f"/bin/{shell}")
     else:

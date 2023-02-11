@@ -7,6 +7,23 @@ from fabric.tasks import task
 
 from xefab.utils import console
 
+SBATCH_INSTRUCTIONS = {
+    "partition": "partition to submit the job to.",
+    "qos": "quality of service to submit the job to.",
+    "time": "number of hours to run the job for, can be a `hrs:mins:secs` string or a number.",
+    "mem_per_cpu": "memory per cpu.",
+    "cpus_per_task": "number of cpus per task.",
+    "jobname": "name of the job.",
+    "job": "jobscript to run.",
+    "output": "where to save the output of the job.",
+    "error": "where to save the error of the job.",
+    "account": "account to submit the job to.",
+}
+
+SINGULARITY_ARGUMENTS = {
+    "bind": "binds a directory to the container.",
+}
+
 sbatch_template = """#!/bin/bash
 #SBATCH --job-name={jobname}
 #SBATCH --output={log}
@@ -19,6 +36,46 @@ sbatch_template = """#!/bin/bash
 {hours}
 {job}
 """
+
+
+def generate_slurm_instructions(**kwargs):
+    """Generates the instructions for the sbatch script"""
+    instructions = []
+    for key, value in kwargs.items():
+        if key in SBATCH_INSTRUCTIONS:
+            key = key.replace("_", "-")
+            if key == "time":
+                if not ":" in value:
+                    value = f"{value}:00:00"
+                if isinstance(value, int):
+                    value = f"{value:02d}:00:00"
+                elif isinstance(value, float):
+                    value = f"{int(value):02d}:{int(value * 60 % 60):02d}:{int(value * 60 % 60 * 60 % 60):02d}"
+                instructions.append(f"#SBATCH --time={value}")
+            else:
+                instructions.append(f"#SBATCH --{key}={value}")
+
+    return "\n".join(instructions) + "\n"
+
+
+def generate_singularity_instructions(command, image_path, **kwargs):
+    """Generates the instructions for the singularity exec"""
+    instructions = ["singularity exec"]
+    for key, value in kwargs.items():
+        if key in SINGULARITY_ARGUMENTS:
+            if key == "bind":
+                if isinstance(value, str):
+                    value = value.split(",")
+                bind_str = " ".join([f"--bind {b}" for b in value])
+                instructions.append(bind_str)
+            else:
+                instructions.append(f"--{key}={value}")
+
+    instructions.append(image_path)
+    instructions.append(command)
+
+    return " ".join(instructions)
+
 
 SINGULARITY_DIR = "/project2/lgrandi/xenonnt/singularity-images"
 
@@ -57,19 +114,21 @@ rm {filepath}
     return new_job_string
 
 
-@task(help={
-    "command": "the command to execute within the job.",
-    "partition": "partition to submit the job to.",
-    "qos": "qos to submit the job to.",
-    "account": "account to submit the job to.",
-    "jobname": "how to name this job.",
-    "dry_run": "Just print the job file.",
-    "mem_per_cpu": "mb requested for job.",
-    "container": "name of the container to activate",
-    "bind": "which paths to add to the container",
-    "cpus_per_task": "cpus requested for job",
-    "hours": "max hours of a job",
-    })
+@task(
+    help={
+        "command": "the command to execute within the job.",
+        "partition": "partition to submit the job to.",
+        "qos": "qos to submit the job to.",
+        "account": "account to submit the job to.",
+        "jobname": "how to name this job.",
+        "dry_run": "Just print the job file.",
+        "mem_per_cpu": "mb requested for job.",
+        "container": "name of the container to activate",
+        "bind": "which paths to add to the container",
+        "cpus_per_task": "cpus requested for job",
+        "hours": "max hours of a job",
+    }
+)
 def submit_job(
     c: Connection,
     command: str,
