@@ -354,7 +354,7 @@ def start_jupyter(
         with progress.enter_task("Writing server details to file",
                                  finished_description="Server details saved",
                                  raise_exceptions=False):
-            details_fd = StringIO(json.dumps(server_details))
+            details_fd = StringIO(json.dumps(server_details, indent=4))
             c.put(details_fd, remote=server_details_path)
 
         # Handle port forwarding
