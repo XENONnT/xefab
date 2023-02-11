@@ -144,7 +144,7 @@ def clone(c, repo: str, org="XENONnT", dest: str = None, hide: bool = False):
     else:
         c.run(f"git clone git@github.com:{repo_fullname}.git {dest}", hide=hide)
     if not hide:
-        console.print(f"Cloned {repo_fullname} to {dest}.")
+        console.print(f"Cloned {repo_fullname} to {c.user}@{c.host}:{dest}.")
 
 
 namespace.add_task(clone)
