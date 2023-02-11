@@ -65,6 +65,7 @@ class XeFab(Fab):
             for name, collection in user_namespace.collections.items():
                 self.namespace.add_collection(collection, name=name)
 
+        hostname = None
         if len(self.argv)>1:
             argv = [self.argv.pop(0)]
             original_argv = list(self.argv)
@@ -82,8 +83,8 @@ class XeFab(Fab):
                     hostnames = self.namespace._configuration.get("hostnames", None)
                     debug(f"xefab: {arg} hostnames: {hostnames}")
                     self.config.configure_ssh_for_host(arg, hostnames)
-                    if not self.args.hosts.value and hostnames is not None:
-                        self.args.hosts.value = arg
+                    if hostnames is not None and hostname is None:
+                        hostname = arg
                 else:
                     argv.append(arg)
                     argv.extend(self.argv)
@@ -91,7 +92,8 @@ class XeFab(Fab):
             if argv != original_argv:
                 self.argv = argv
                 self.parse_core(argv)
-                
+            if hostname is not None:
+                self.args.hosts.value = hostname
         super().parse_collection()
 
     def task_panel(self, task, name, parents = ()):
