@@ -47,6 +47,7 @@ sphinx-material = "*"
 
 [tool.poetry.scripts]
 xefab = 'xefab.main:program.run'
+xf = 'xefab.main:program.run'
 
 [tool.poetry.plugins."xefab.tasks"]
 "midway" = "xefab.hosts.uchicago.midway"
