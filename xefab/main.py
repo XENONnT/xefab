@@ -2,23 +2,21 @@
 import inspect
 import sys
 
-from rich.tree import Tree
-from rich.console import Group
-from rich.text import Text
-from rich.panel import Panel
-from rich.console import group, NewLine
-from rich.padding import Padding
-from rich.table import Table
-
 from fabric.executor import Executor
 from fabric.main import Fab
-from invoke.util import debug
 from invoke.exceptions import Exit
+from invoke.util import debug
+from rich.console import Group, NewLine, group
+from rich.padding import Padding
+from rich.panel import Panel
+from rich.table import Table
+from rich.text import Text
+from rich.tree import Tree
 
 from xefab import __version__, tasks
 from xefab.collection import XefabCollection
 from xefab.config import Config
-from xefab.utils import console, ProgressContext
+from xefab.utils import ProgressContext, console
 
 
 @group()

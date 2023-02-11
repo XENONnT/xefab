@@ -9,14 +9,14 @@ from string import ascii_lowercase
 from fabric.tasks import task
 from rich.layout import Layout
 from rich.panel import Panel
-from rich.progress import Progress, BarColumn, TextColumn, SpinnerColumn
+from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn
 
-from xefab.utils import console, get_open_port, ProgressContext
+from xefab.utils import ProgressContext, console, get_open_port
 
 from .squeue_task import parse_squeue_output
 from .utils import print_splash
 
-JOB_NAME = 'xefab-jupyter'
+JOB_NAME = "xefab-jupyter"
 
 PROGRESS_COLUMNS = [
     SpinnerColumn(finished_text="[bold green]✓[/bold green]"),
@@ -166,8 +166,10 @@ def start_jupyter(
             # Add the singularity runner script to the batch job
             batch_job = JOB_HEADER + f"{starter_path} "
 
-            with progress.enter_task("Uploading singularity runner script",
-                finished_description="Singularity runner script uploaded",) as task:
+            with progress.enter_task(
+                "Uploading singularity runner script",
+                finished_description="Singularity runner script uploaded",
+            ) as task:
                 starter_script_fd = StringIO(starter_script)
                 c.put(starter_script_fd, remote=starter_path)
                 progress.update(task, description="Making script executable")
@@ -178,7 +180,9 @@ def start_jupyter(
                 JOB_HEADER
                 + "source /cvmfs/xenon.opensciencegrid.org/releases/nT/%s/setup.sh"
                 % (tag)
-                + START_JUPYTER.format(jupyter=jupyter, notebook_dir=notebook_dir, port=remote_port)
+                + START_JUPYTER.format(
+                    jupyter=jupyter, notebook_dir=notebook_dir, port=remote_port
+                )
             )
             console.print(
                 "Using conda from cvmfs (%s) instead of singularity container." % (tag),
@@ -193,7 +197,9 @@ def start_jupyter(
             batch_job = (
                 JOB_HEADER
                 + "source /dali/lgrandi/strax/miniconda3/bin/activate strax"
-                + START_JUPYTER.format(jupyter=jupyter, notebook_dir=notebook_dir, port=remote_port)
+                + START_JUPYTER.format(
+                    jupyter=jupyter, notebook_dir=notebook_dir, port=remote_port
+                )
             )
             console.print(
                 "Using conda from cvmfs (%s) instead of singularity container." % (tag)
@@ -227,9 +233,13 @@ def start_jupyter(
                 "Notebook reservation requested. Checking availability",
                 finished_description="using Notebook reservation.",
                 exception_description="Notebook reservation does not exist, submitting a regular job.",
-                raise_exceptions=False):
+                raise_exceptions=False,
+            ):
                 result = c.run("scontrol show reservations", hide=True, warn=True)
-                if result.failed or "ReservationName=xenon_notebook" not in result.stdout:
+                if (
+                    result.failed
+                    or "ReservationName=xenon_notebook" not in result.stdout
+                ):
                     use_reservation = False
                     raise
 
@@ -286,9 +296,11 @@ def start_jupyter(
 
         console.print("Submitted job with ID: %d" % job_id)
 
-        with progress.enter_task("Waiting for your job to start",
-                            finished_description="Job started.",
-                            exception_description="Job did not start."):
+        with progress.enter_task(
+            "Waiting for your job to start",
+            finished_description="Job started.",
+            exception_description="Job did not start.",
+        ):
             for _ in range(timeout):
                 result = c.run("squeue -j %d" % job_id, hide=True, warn=True)
                 df = parse_squeue_output(result.stdout)
@@ -300,9 +312,11 @@ def start_jupyter(
             else:
                 raise RuntimeError("Timeout reached while waiting for job to start.")
 
-        with progress.enter_task("Waiting for jupyter server to start",
-                                 finished_description="Jupyter server started.",
-                                 exception_description="Jupyter server did not start."):
+        with progress.enter_task(
+            "Waiting for jupyter server to start",
+            finished_description="Jupyter server started.",
+            exception_description="Jupyter server did not start.",
+        ):
             url = None
             for _ in range(timeout):
                 time.sleep(1)
@@ -326,7 +340,9 @@ def start_jupyter(
                     continue
                 break
             else:
-                raise RuntimeError("Timeout reached while waiting for jupyter to start.")
+                raise RuntimeError(
+                    "Timeout reached while waiting for jupyter to start."
+                )
 
             console.print("\nJupyter started succesfully.")
             console.print(f"Remote URL: \n{url}\n")
@@ -338,7 +354,7 @@ def start_jupyter(
                 token = ""
                 local_url = f"http://localhost:{local_port}"
 
-         # Can never be too careful, make sure port numbers are integers
+        # Can never be too careful, make sure port numbers are integers
         local_port = int(local_port)
         remote_port = int(remote_port)
 
@@ -351,34 +367,40 @@ def start_jupyter(
         }
 
         # Persist server details
-        with progress.enter_task("Writing server details to file",
-                                 finished_description="Server details saved",
-                                 raise_exceptions=False):
-            details_fd = StringIO(json.dumps(server_details))
+        with progress.enter_task(
+            "Writing server details to file",
+            finished_description="Server details saved",
+            raise_exceptions=False,
+        ):
+            details_fd = StringIO(json.dumps(server_details, indent=4))
             c.put(details_fd, remote=server_details_path)
 
         # Handle port forwarding
         msg = f"Forwarding remote address {remote_host}:{remote_port} to local port {local_port}"
         if not detached:
-            extra_msg =(f"\nYou can access the notebook at \n{local_url}\n"
-                        "   Press ENTER or CTRL-C to deactivate and cancel job."
-                    )
-            with progress.enter_task(msg+extra_msg,
-                        exception_description="Exception raised while forwarding port",
-                        raise_exceptions=False) as task:
-               
+            extra_msg = (
+                f"\nYou can access the notebook at \n{local_url}\n"
+                "   Press ENTER or CTRL-C to deactivate and cancel job."
+            )
+            with progress.enter_task(
+                msg + extra_msg,
+                exception_description="Exception raised while forwarding port",
+                raise_exceptions=False,
+            ) as task:
                 with c.forward_local(
                     local_port, remote_port=remote_port, remote_host=remote_host
                 ):
                     time.sleep(3)
-                    
+
                     if not no_browser:
                         result = c.local(
                             f"python -m webbrowser -t {local_url}", hide=True, warn=True
                         )
                     try:
                         r = progress.console.input()
-                        progress.update(task, description="Deactivating port forwarding")
+                        progress.update(
+                            task, description="Deactivating port forwarding"
+                        )
                         time.sleep(2)
                     except KeyboardInterrupt:
                         console.print("Keyboard interrupt received.")
@@ -387,17 +409,21 @@ def start_jupyter(
                             console.print(f"Exception raised: {e}")
                         else:
                             console.print(f"Exception raised.")
-        
-            with progress.enter_task("Canceling job",
+
+            with progress.enter_task(
+                "Canceling job",
                 finished_description="Job canceled",
                 exception_description=f"Could not cancel job. Please cancel it manually. Job ID: {job_id}",
-                raise_exceptions=False):
+                raise_exceptions=False,
+            ):
                 c.run(f"scancel {job_id}", hide=True)
 
             if not debug:
-                with progress.enter_task("Cleaning up job files",
+                with progress.enter_task(
+                    "Cleaning up job files",
                     finished_description="Job folder removed",
-                    exception_description=f"Could not remove job folder. Please remove it manually. Path: {job_folder}",):
+                    exception_description=f"Could not remove job folder. Please remove it manually. Path: {job_folder}",
+                ):
                     for _ in range(3):
                         time.sleep(2)
                         result = c.run(f"rm -rf {job_folder}", hide=True, warn=True)
@@ -409,7 +435,6 @@ def start_jupyter(
         else:
             # Detached mode - just forward the port and exit
             with progress.enter_task(msg, raise_exceptions=False) as task:
-
                 result = c.local(
                     f"ssh -fN -L {local_port}:{remote_host}:{remote_port} {c.user}@{c.host} &",
                     disown=True,
@@ -419,6 +444,8 @@ def start_jupyter(
                 time.sleep(3)
                 console.print(f"You can access the notebook at \n{local_url}\n")
                 if result.ok and not no_browser:
-                    c.local(f"python -m webbrowser -t {local_url}", hide=True, warn=True)
-                
+                    c.local(
+                        f"python -m webbrowser -t {local_url}", hide=True, warn=True
+                    )
+
     console.print("Goodbye!")

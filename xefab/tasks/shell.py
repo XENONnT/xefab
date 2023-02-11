@@ -3,7 +3,6 @@ from fabric.tasks import task
 
 from xefab.utils import console
 
-
 SHELL_PROFILE_FILES = {
     "sh": ["~/.profile"],
     "bash": ["~/.profile", "~/.bash_profile"],

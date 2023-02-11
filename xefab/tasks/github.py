@@ -1,11 +1,12 @@
 import json
+import os
 import tempfile
 
 from fabric.connection import Connection
 from fabric.tasks import task
-from xefab.collection import XefabCollection
 
-from xefab.utils import console, try_local
+from xefab.collection import XefabCollection
+from xefab.utils import console, filesystem, try_local
 
 from .admin import add_recipient
 from .install import ensure_dependency, github_cli
@@ -121,19 +122,29 @@ def xenonnt_keys(c, hide: bool = False, add: bool = False):
 
 
 @task
-def clone(c, repo: str, org="XENONnT", branch: str = "master", dest: str = None):
+def clone(c, repo: str, org="XENONnT", dest: str = None, hide: bool = False):
     if dest is None:
         dest = repo
-    repo = f"{org}/{repo}"
+
+    repo_fullname = f"{org}/{repo}"
     if isinstance(c, Connection) and which(c, "gh", local=True, hide=True):
         with tempfile.TemporaryDirectory() as tmpdir:
-            c.local(f"gh repo clone {repo} {tmpdir}")
-            c.put(tmpdir, remote=dest)
+            c.local(f"gh repo clone {repo_fullname} {tmpdir}", hide=hide)
+            if not hide:
+                console.print(
+                    f"Cloned {repo_fullname} to {tmpdir}. Copying files to remote Host."
+                )
+            if not dest.startswith("/"):
+                dest = f"/home/{c.user}/{dest}"
+            c.local(
+                f"rsync -avz --progress {tmpdir}/ {c.user}@{c.host}:{dest}/", hide=hide
+            )
     elif which(c, "gh", hide=True):
-        c.run(f"gh repo clone {repo} {dest}")
+        c.run(f"gh repo clone {repo_fullname} {dest}", hide=hide)
     else:
-        c.run(f"git clone git@github.com:{org}/{repo}.git {dest}")
-    console.print(f"Cloned {repo} to {dest}.")
+        c.run(f"git clone git@github.com:{repo_fullname}.git {dest}", hide=hide)
+    if not hide:
+        console.print(f"Cloned {repo_fullname} to {c.user}@{c.host}:{dest}.")
 
 
 namespace.add_task(clone)
