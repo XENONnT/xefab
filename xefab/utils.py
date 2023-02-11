@@ -13,10 +13,9 @@ from invoke.context import Context
 from invoke.util import enable_logging
 from makefun import wraps
 from rich.console import Console
+from rich.progress import Progress
 from rich.table import Table
 from rich.theme import Theme
-from rich.progress import Progress
-
 
 custom_theme = Theme({"info": "dim cyan", "warning": "magenta", "danger": "bold red"})
 

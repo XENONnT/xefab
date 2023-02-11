@@ -1,6 +1,5 @@
 from xefab.collection import XefabCollection
 from xefab.tasks.base import show_context
-
 from xefab.tasks.batchq import submit_job
 from xefab.tasks.jupyter_task import start_jupyter
 from xefab.tasks.squeue_task import squeue
