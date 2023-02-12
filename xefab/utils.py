@@ -2,6 +2,7 @@ import contextlib
 import errno
 import os
 import socket
+from collections import defaultdict
 from inspect import Parameter
 from typing import Optional, Union
 
@@ -31,6 +32,11 @@ SHELL_PROFILE_FILES = {
 
 if os.environ.get("XEFAB_DEBUG") in ("1", "true", "True"):
     enable_logging()
+
+
+def nested_dict():
+    """Create a nested defaultdict."""
+    return defaultdict(nested_dict)
 
 
 @function_decorator

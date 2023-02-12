@@ -1,7 +1,7 @@
 from xefab.collection import XefabCollection
 from xefab.tasks.base import show_context
 from xefab.tasks.batchq import submit_job
-from xefab.tasks.jupyter_task import start_jupyter
+from xefab.tasks.jupyter import start_jupyter
 from xefab.tasks.squeue_task import squeue
 from xefab.tasks.transfer_tasks import download_file, upload_file
 
