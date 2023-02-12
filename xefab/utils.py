@@ -4,7 +4,7 @@ import os
 import socket
 from collections import defaultdict
 from inspect import Parameter
-from typing import Optional, Union
+from typing import Iterable, Optional, Tuple, Union
 
 import fsspec
 import pandas as pd
@@ -14,9 +14,11 @@ from invoke.context import Context
 from invoke.util import enable_logging
 from makefun import wraps
 from rich.console import Console
-from rich.progress import Progress
+from rich.progress import Progress, TextColumn, SpinnerColumn, ProgressColumn
 from rich.table import Table
 from rich.theme import Theme
+from rich.console import RenderableType
+from rich.panel import Panel
 
 custom_theme = Theme({"info": "dim cyan", "warning": "magenta", "danger": "bold red"})
 
@@ -132,6 +134,26 @@ def df_to_table(
 
 
 class ProgressContext(Progress):
+    """A context manager for rich.progress.Progress.
+    Allows entering a task context and task will be completed when exiting
+    """
+    def __init__(self, *args, **kwargs):
+        self._live_display = None
+        super().__init__(*args, **kwargs)
+
+    @classmethod
+    def get_default_columns(cls) -> Tuple[ProgressColumn, ...]:
+        return (
+            SpinnerColumn(finished_text="[bold green]✓[/bold green]"),
+            TextColumn("[progress.description]{task.description}"),
+            SpinnerColumn(spinner_name="simpleDots", finished_text=""),
+        )
+
+    def get_renderables(self) -> Iterable[RenderableType]:
+        yield from super().get_renderables()
+        if self._live_display is not None:
+            yield self._live_display
+
     @contextlib.contextmanager
     def enter_task(
         self,
@@ -147,8 +169,16 @@ class ProgressContext(Progress):
             yield task
         except Exception as e:
             finished_description = exception_description.format(exception=e)
+            if isinstance(self.columns[0], SpinnerColumn):
+                self.columns[0].finished_text = "[red]✘[/red]"
             if raise_exceptions:
                 raise e
         finally:
             description = finished_description or self.tasks[task].description
             self.update(task_id=task, completed=total, description=description)
+
+    def live_display(self, renderable):
+        """Display a renderable in a panel below the progress bar."""
+        with self._lock:
+            self._live_display = renderable
+        self.refresh()

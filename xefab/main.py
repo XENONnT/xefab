@@ -82,6 +82,9 @@ class XeFab(Fab):
 
         return args + my_args
 
+    def task_args(self):
+        return []
+
     def parse_collection(self):
         user_namespace = None
         # Load any locally defined tasks

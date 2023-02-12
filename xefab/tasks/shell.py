@@ -58,9 +58,9 @@ def is_dir(c, path: str, local: bool = False, hide: bool = False):
 def exists(c, path: str, local: bool = False, hide: bool = False):
     cmd = f"test -e {path}"
     if local:
-        result = c.local(cmd, hide=True, warn=True)
+        result = c.local(cmd, hide=hide, warn=True)
     else:
-        result = c.run(cmd, hide=True, warn=True)
+        result = c.run(cmd, hide=hide, warn=True)
     if not hide:
         msg = "1" if result.ok else "0"
         console.print(msg)

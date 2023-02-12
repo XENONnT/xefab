@@ -2,10 +2,10 @@ import json
 from typing import Callable, Optional
 
 from fabric.tasks import task
-
 from xefab.utils import console
 
 from .shell import get_system, which
+
 
 CONDA_LINKS = {
     "linux": "https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh",
@@ -27,7 +27,7 @@ def ensure_dependency(dep, local: bool = False, installer: Optional[Callable] = 
     return wrapper
 
 
-@task(pre=[ensure_dependency("wget")])
+@task
 def go(c, force: bool = False):
     if which(c, "go", hide=True) and not force:
         console.print("Go already installed on system.")
@@ -45,7 +45,7 @@ def go(c, force: bool = False):
         raise RuntimeError(f"{system} currently not supported by this task.")
 
 
-@task(pre=[ensure_dependency("go", installer=go)])
+@task
 def gopass(c, force: bool = False):
     if which(c, "gopass", hide=True) and not force:
         console.print("Gopass already installed on system.")
@@ -63,7 +63,7 @@ def chezmoi(c, force: bool = False):
     console.print("Done.")
 
 
-@task
+@task(aliases=["gh"])
 def github_cli(c, force: bool = False):
     console.print("Checking for existing installation.")
     have_gh = which(c, "gh", hide=True)
@@ -116,7 +116,7 @@ def github_cli(c, force: bool = False):
     console.print("Done.")
 
 
-@task(pre=[ensure_dependency("wget")])
+@task(aliases=['gpg'],)
 def gnupg(c, force: bool = False):
     if which(c, "gpg", hide=True) and not force:
         console.print("GnuPG already installed on system.")
@@ -133,7 +133,7 @@ def gnupg(c, force: bool = False):
     console.print("Done.")
 
 
-@task(pre=[ensure_dependency("wget")])
+@task(aliases=['conda'], )
 def miniconda(c, download_only: bool = False):
     system = get_system(c, hide=True).lower()
     if system not in CONDA_LINKS:

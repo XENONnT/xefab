@@ -15,12 +15,6 @@ from .utils import print_splash
 
 JOB_NAME = "xefab-jupyter"
 
-PROGRESS_COLUMNS = [
-    SpinnerColumn(finished_text="[bold green]✓[/bold green]"),
-    TextColumn("{task.description}"),
-    SpinnerColumn(spinner_name="simpleDots", finished_text=""),
-]
-
 
 JOB_HEADER = """#!/bin/bash
 #SBATCH --job-name={job_name}
@@ -176,7 +170,7 @@ host and forward to local port via ssh-tunnel."""
         )
         env_vars["INSTALL_CUTAX"] = "0"
 
-    with ProgressContext(*PROGRESS_COLUMNS) as progress:
+    with ProgressContext() as progress:
         with progress.enter_task("Checking connection and destination folder"):
             if not c.run(f"test -d {job_folder}", warn=True).ok:
                 progress.console.print(f"Creating {job_folder} on {c.host}")
