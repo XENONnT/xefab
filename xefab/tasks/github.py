@@ -76,6 +76,7 @@ def token(c):
 
 
 @task(pre=[ensure_dependency("gh", installer=github_cli)])
+@try_local
 def xenonnt_members(c, hide: bool = False):
     users = github_api_call(c, "orgs/XENONnT/members", hide=True)
 
@@ -87,6 +88,7 @@ def xenonnt_members(c, hide: bool = False):
 
 
 @task(pre=[ensure_dependency("gh", installer=github_cli)])
+@try_local
 def xenon1t_members(c, hide: bool = False):
     users = github_api_call(c, "orgs/XENON1T/members", hide=True)
 
@@ -98,6 +100,7 @@ def xenon1t_members(c, hide: bool = False):
 
 
 @task(pre=[ensure_dependency("gh", installer=github_cli)])
+@try_local
 def xenonnt_keys(c, hide: bool = False, add: bool = False):
     users = github_api_call(c, "orgs/XENONnT/members", hide=True)
 
