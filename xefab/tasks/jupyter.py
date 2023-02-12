@@ -1,15 +1,12 @@
 import json
 import random
 import time
-import webbrowser
 from io import BytesIO, StringIO
 from random import choices
 from string import ascii_lowercase
 
 from fabric.tasks import task
-from rich.layout import Layout
-from rich.panel import Panel
-from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn
+from rich.progress import SpinnerColumn, TextColumn
 
 from xefab.utils import ProgressContext, console, get_open_port
 
@@ -76,8 +73,42 @@ singularity exec {BIND_STR} {CONTAINER} jupyter {JUPYTER_TYPE} --no-browser --po
 
 """
 
+START_JUPYTER_SINGULARITY = """
 
-@task(pre=[print_splash])
+SINGULARITY_CACHEDIR=/scratch/midway2/{user}/singularity_cache
+
+module load singularity
+
+singularity exec {bind_str} {container} jupyter {jupyter} --no-browser --port={port} --ip=0.0.0.0 --notebook-dir {notebook_dir}
+"""
+
+
+@task(
+    pre=[print_splash],
+    help={
+        "env": "Environment to run on",
+        "partition": "Partition to run on (xenon1t or dali)",
+        "bypass_reservation": "Dont attempt to use the xenon notebook reservation",
+        "tag": "Tag of the container to use",
+        "binds": "Directories to bind to the container",
+        "node": "Node to run on",
+        "timeout": "Timeout for the job to start",
+        "cpu": "Number of CPUs to request",
+        "ram": "Amount of RAM to allocate (in MB)",
+        "gpu": "Use a GPU",
+        "jupyter": "Type of jupyter server to start (lab or notebook)",
+        "local_cutax": "Use user installed cutax (from ~/.local)",
+        "notebook_dir": "Directory to start the notebook in",
+        "max_hours": "Maximum number of hours to run for",
+        "force_new": "Force a new job to be started",
+        "local_port": "Local port to attempt to forward to (if free)",
+        "remote_port": "Port to use for jupyter server to on the worker node",
+        "detached": "Run the job and exit, dont perform cleanup tasks.",
+        "no_browser": "Dont open the browser automatically when done",
+        "image_dir": "Directory to look for singularity images",
+        "debug": "Print debug information",
+    },
+)
 def start_jupyter(
     c,
     env: str = "singularity",
@@ -102,7 +133,8 @@ def start_jupyter(
     image_dir: str = None,
     debug: bool = False,
 ):
-    """Start a jupyter notebook on remote host."""
+    """Start a jupyter analysis notebook on the remote \
+host and forward to local port via ssh-tunnel."""
 
     REMOTE_HOME = f"/home/{c.user}"
 
@@ -164,7 +196,15 @@ def start_jupyter(
                 )
 
             # Add the singularity runner script to the batch job
-            batch_job = JOB_HEADER + f"{starter_path} "
+            # batch_job = JOB_HEADER + f"{starter_path} "
+            batch_job = JOB_HEADER + START_JUPYTER_SINGULARITY.format(
+                user=c.user,
+                bind_str=bind_str,
+                container=s_container,
+                jupyter=jupyter,
+                notebook_dir=notebook_dir,
+                port=remote_port,
+            )
 
             with progress.enter_task(
                 "Uploading singularity runner script",

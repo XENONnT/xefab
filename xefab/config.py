@@ -97,6 +97,7 @@ class Config(FabricConfig):
                 "collection_name": "xetasks",
             },
             "xenon_config_paths": Config.get_xenon_config_paths(),
+            "list-depth": 3,
         }
 
         merge_dicts(defaults, ours)
