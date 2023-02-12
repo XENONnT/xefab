@@ -1,13 +1,20 @@
+import json
+import time
 import uuid
-from io import BytesIO
+from io import BytesIO, StringIO
 from typing import List
 
+from rich.panel import Panel
 from fabric.connection import Connection
 from fabric.tasks import task
+from xefab.tasks.squeue import parse_squeue_output
 
-from xefab.utils import console
+from xefab.utils import console, ProgressContext, tail
+from xefab.tasks.shell import exists, is_file
 
-SBATCH_INSTRUCTIONS = {
+
+
+SLURM_INSTRUCTIONS = {
     "partition": "partition to submit the job to.",
     "qos": "quality of service to submit the job to.",
     "time": "number of hours to run the job for, can be a `hrs:mins:secs` string or a number.",
@@ -18,31 +25,57 @@ SBATCH_INSTRUCTIONS = {
     "output": "where to save the output of the job.",
     "error": "where to save the error of the job.",
     "account": "account to submit the job to.",
+    "chdir": "change directory to this path before running the job.",
+    "mail_type": "when to send an email about the job.",
+    "mail_user": "email address to send the email to.",
+    "array": "array of jobs to run.",
+    "dependency": "job dependency.",
+    "exclude": "nodes to exclude.",
+    "gres": "generic resources to use.",
+    "hint": "hint to the scheduler.",
+    "kill_on_invalid_dep": "kill the job if the dependency is invalid.",
+    "nodelist": "nodes to use.",
+    "ntasks": "number of tasks to run.",
+    "ntasks_per_node": "number of tasks per node.",
+    "ntasks_per_core": "number of tasks per core.",
+    "nodes": "number of nodes to use.",
+    "overcommit": "overcommit resources.",
+    "requeue": "requeue the job if it fails.",
+    "reservation": "reservation to use.",
+    "threads_per_core": "threads per core.",
+    "wait": "wait for the job to finish.",
+    "comment": "comment to add to the job.",
+    "constraint": "constraint to use.",
+    "get_user_env": "get the user environment.",
+
 }
 
 SINGULARITY_ARGUMENTS = {
     "bind": "binds a directory to the container.",
 }
 
-sbatch_template = """#!/bin/bash
-#SBATCH --job-name={jobname}
-#SBATCH --output={log}
-#SBATCH --error={log}
-#SBATCH --account=pi-lgrandi
-#SBATCH --qos={qos}
-#SBATCH --partition={partition}
-#SBATCH --mem-per-cpu={mem_per_cpu}
-#SBATCH --cpus-per-task={cpus_per_task}
-{hours}
-{job}
+
+SBATCH_TEMPLATE = """#!/bin/bash
+{slurm_instructions}
+
+{env_settings}
+
+unset X509_CERT_DIR CUTAX_LOCATION
+
+module load singularity
+
+{command}
+
+echo {done_message}
+echo "Finished at $(date)"
 """
 
 
 def generate_slurm_instructions(**kwargs):
-    """Generates the instructions for the sbatch script"""
+    """Generates the singularity command for the sbatch script"""
     instructions = []
     for key, value in kwargs.items():
-        if key in SBATCH_INSTRUCTIONS:
+        if key in SLURM_INSTRUCTIONS:
             key = key.replace("_", "-")
             if key == "time":
                 if not ":" in value:
@@ -62,61 +95,40 @@ def generate_singularity_instructions(command, image_path, **kwargs):
     """Generates the instructions for the singularity exec"""
     instructions = ["singularity exec"]
     for key, value in kwargs.items():
-        if key in SINGULARITY_ARGUMENTS:
-            if key == "bind":
-                if isinstance(value, str):
-                    value = value.split(",")
-                bind_str = " ".join([f"--bind {b}" for b in value])
-                instructions.append(bind_str)
-            else:
-                instructions.append(f"--{key}={value}")
+        if key not in SINGULARITY_ARGUMENTS:
+            continue
+        if key == "bind":
+            if isinstance(value, str):
+                value = value.split(",")
+            bind_str = " ".join([f"--bind {b}" for b in value])
+            instructions.append(bind_str)
+        elif isinstance(value, bool):
+            instructions.append(f"--{key}")
+        else:
+            instructions.append(f"--{key}={value}")
 
     instructions.append(image_path)
     instructions.append(command)
 
     return " ".join(instructions)
 
+def generate_env_instructions(**env):
+    """Generates the environment variables export commands for the job"""
+    if not env:
+        return ""
+    instructions = []
+    for key, value in env.items():
+        instructions.append(f"export {key}={value}")
+
+    return "\n".join(instructions) + "\n\n"
+
 
 SINGULARITY_DIR = "/project2/lgrandi/xenonnt/singularity-images"
 
 
-def singularity_wrap(
-    c: Connection, jobstring: str, tmpdir: str, image: str, bind: List[str] = []
-):
-    """Wraps a jobscript into another executable
-    file that can be passed to singularity exec"""
-
-    if isinstance(bind, str):
-        bind = [bind]
-
-    bind = list(bind) + [tmpdir]
-
-    filename = "xefabtmp_" + f"{uuid.uuid4()}.sh".replace("-", "")[-10:]
-
-    filepath = "/".join([tmpdir, filename])
-
-    console.print(f"Using {filepath} on {c.host} for inner jobscript.")
-
-    with console.status(f"Uploading inner jobscript to {filepath} on {c.host}"):
-        fd = BytesIO(f"#!/bin/bash\n{jobstring}".encode())
-        c.put(fd, remote=filepath)
-        del fd
-
-    with console.status(f"Changing {filepath} on {c.host} to executable"):
-        c.run(f"chmod +x {filepath}")
-
-    bind_string = " ".join([f"--bind {b}" for b in bind])
-    image = "/".join([SINGULARITY_DIR, image])
-
-    new_job_string = f"""singularity exec {bind_string} {image} {filepath}
-rm {filepath}
-"""
-    return new_job_string
-
-
 @task(
     help={
-        "command": "the command to execute within the job.",
+        "script": "the command/script to execute within the job.",
         "partition": "partition to submit the job to.",
         "qos": "qos to submit the job to.",
         "account": "account to submit the job to.",
@@ -127,99 +139,192 @@ rm {filepath}
         "bind": "which paths to add to the container",
         "cpus_per_task": "cpus requested for job",
         "hours": "max hours of a job",
+        "container_dir": "where to find the container",
+        "env_dict": "environment variables to set before running the job",
+        "workdir": "working directory for the job",
+        "output": "where to save the stdout stream of the job",
+        "error": "where to save the stderr stream of the job",
+        "timeout": "how long to wait for the job to start before exiting (seconds)",
+        "extra_instructions": "extra slurm instructions to add to the batch file",
     }
 )
-def submit_job(
+def sbatch(
     c: Connection,
-    command: str,
+    script: str,
     *,
-    partition="xenon1t",
-    qos="xenon1t",
-    account="pi-lgrandi",
-    jobname="xefab_job",
-    dry_run=False,
-    mem_per_cpu=1000,
+    partition: str = "xenon1t",
+    qos: str = "xenon1t",
+    account: str = "pi-lgrandi",
+    jobname: str = None,
+    dry_run: bool = False,
+    mem_per_cpu: int = 1000,
     container="xenonnt-development.simg",
-    bind=("/dali", "/project2"),
-    cpus_per_task=1,
-    hours=None,
+    bind: list = None,
+    cpus_per_task: int = 1,
+    hours: float = 12,
+    container_dir: str = SINGULARITY_DIR,
+    env_dict: str = None,
+    workdir: str = None,
+    output: str = None,
+    error: str = None,
+    extra_instructions: str = None,
+    timeout: int = 120,
 ):
     """
     Create and submit a job to SLURM job queue on the remote host.
     """
-    console.print(f"Using {c.host} as host")
-    console.print(f"job command: {command}")
 
-    with console.status(f"Looking up SCRATCH directory on {c.host}"):
-        result = c.run("echo $SCRATCH", hide=True, warn=True)
-        if result.ok and result.stdout:
-            TMPDIR = result.stdout.strip()
+    job_id = str(uuid.uuid4()).replace("-", "")[:8]
+
+    if jobname is None:
+        jobname = f"xefab_job_{job_id}"
+
+     # parse and check arguments
+
+    if bind is None:
+        bind = ["/dali", "/project2", "/scratch", "/cvmfs"]
+    if len(bind) == 1:
+        bind = bind[0].split(',')
+    bind = [b.strip() for b in bind]
+
+    if env_dict is None:
+        env_dict = {}
+    else:
+        env_dict = json.loads(env_dict)
+
+    if extra_instructions is None:
+        extra_instructions = {}
+    else:
+        extra_instructions = json.loads(extra_instructions)
+
+    with ProgressContext() as progress:
+        if workdir is None:
+            with progress.enter_task("Checking for $SCRATCH folder") as task:
+                result = c.run("echo $SCRATCH", hide=True, warn=True)
+            if result.ok and result.stdout:
+                SCRATCH = result.stdout.strip()
+            else:
+                SCRATCH = f"/scratch/midway2/{c.user}"
+
+            workdir = f"{SCRATCH}/xefab_jobs/{jobname}"
+        
+        if output is None:
+            output = f"{workdir}/{jobname}.out"
+        if error is None:
+            error = f"{workdir}/{jobname}.err"
+
+        if script.endswith(".py"):
+            remote_script_path = f"{workdir}/{jobname}.py"
+            command = f"python {remote_script_path}"
         else:
-            TMPDIR = "."
+            remote_script_path = f"{workdir}/{jobname}.sh"
+            command = remote_script_path
 
-    TMPDIR = "/".join([TMPDIR, "tmp"])
+        sbatch_path = f"{workdir}/{jobname}.sbatch"
 
-    console.print(f"Using {TMPDIR} as temporary directory")
+        with progress.enter_task("Testing remote connection and workdir existince") as task:
+            if not exists(c, workdir, hide=True):
+                progress.update(task, description=f"Creating workdir {workdir} on {c.host}")
+                c.run(f"mkdir -p {workdir}", hide=True)
 
-    with console.status(f"Creating temporary directory {TMPDIR} on {c.host}"):
-        c.run(f"mkdir -p {TMPDIR}", hide=True, warn=True)
+        if is_file(c, script, hide=True, local=True):
+            with progress.enter_task(f"Copying script to {c.original_host}"):
+                c.put(script, remote=remote_script_path)
 
-    console.print(f"Created temporary directory {TMPDIR} on {c.host}")
+        elif is_file(c, script, hide=True):
+            with progress.enter_task(f"Copying script to working directory"):
+                c.run(f"cp {script} {remote_script_path}", hide=True)
+        else:
+            script_fd = StringIO("#!/bin/bash\n" + script)
+            with progress.enter_task(f"Creating script at on {c.original_host}"):
+                c.put(script_fd, remote=remote_script_path)
 
-    random_string = f"{uuid.uuid4()}".replace("-", "")[-8:]
+        if remote_script_path.endswith("sh"):
+            with progress.enter_task(f"Making script executable"):
+                c.run(f"chmod +x {remote_script_path}", hide=True)
 
-    batchname = f"{jobname}_{random_string}"
+    
+        with progress.enter_task(f"Creating sbatch file"):
+            slurm_instructions = generate_slurm_instructions(
+                    jobname=jobname,
+                    partition=partition,
+                    qos=qos,
+                    account=account,
+                    mem_per_cpu=mem_per_cpu,
+                    cpus_per_task=cpus_per_task,
+                    hours=hours,
+                    output=output,
+                    error=error,
+                    chdir=workdir,
+                    **extra_instructions,
+                )
 
-    if container:
-        # need to wrap job into another executable
-        jobstr = singularity_wrap(c, command, TMPDIR, container, bind)
-        jobstr = (
-            "unset X509_CERT_DIR CUTAX_LOCATION\n"
-            + "module load singularity\n"
-            + jobstr
-        )
-    else:
-        jobstr = command
+            env_instructions = generate_env_instructions(**env_dict)
 
-    if hours is not None:
-        hours = "#SBATCH --time={:02d}:{:02d}:{:02d}".format(
-            int(hours), int(hours * 60 % 60), int(hours * 60 % 60 * 60 % 60)
-        )
-    else:
-        hours = ""
+            if container:
+                image_path = f"{container_dir.rstrip('/')}/{container}"
+                command = generate_singularity_instructions(command, image_path, bind=bind)
 
-    sbatch_file = f"{batchname}.sbatch"
-    log = f"{batchname}.log"
+            done_message = f"Job {jobname} done."
 
-    sbatch_script = sbatch_template.format(
-        jobname=jobname,
-        log=log,
-        qos=qos,
-        partition=partition,
-        account=account,
-        job=jobstr,
-        mem_per_cpu=mem_per_cpu,
-        cpus_per_task=cpus_per_task,
-        hours=hours,
-    )
+            sbatch_content = SBATCH_TEMPLATE.format(
+                slurm_instructions=slurm_instructions,
+                env_settings=env_instructions,
+                command=command,
+                done_message=done_message,
+            )
+    
+        if dry_run:
+            progress.live_display(Panel.fit(sbatch_content, title="sbatch file"))
+            exit(0)
 
-    if dry_run:
-        console.print("=== DRY RUN ===")
-        console.print(sbatch_script)
-        return
+        with progress.enter_task(f"Uploading sbatch file to {c.original_host}"):
+            sbatch_fd = StringIO(sbatch_content)
+            c.put(sbatch_fd, remote=sbatch_path)
+        
+        with progress.enter_task(f"Making sbatch file executable"):
+            c.run(f"chmod +x {sbatch_path}", hide=True)
 
-    console.print(f"Using {sbatch_file} as sbatch filename")
+        with progress.enter_task(f"Submitting job to SLURM queue") as task:
+            result = c.run(f"sbatch {sbatch_path}", hide=True, warn=True)
+            if result.ok and result.stdout:
+                job_id = int(result.stdout.split()[-1])
+                progress.update(task, description=f"Job submitted to batch queue. Job ID: {job_id}")
+            else:
+                raise
 
-    with console.status(f"Uploading outer jobscript to {sbatch_file} on {c.host}"):
-        fd = BytesIO(sbatch_script.encode())
-        c.put(fd, remote=sbatch_file)
+        with progress.enter_task(f"Waiting for job to start") as task:
+            for _ in range(timeout):
+                result = c.run(f"squeue -j {job_id}", hide=True, warn=True)
+                df = parse_squeue_output(result.stdout)
+                if len(df) and df["ST"].iloc[0] == "R":
+                    progress.update(task, description=f"Job started")
+                    break
+                elif len(df) and df["ST"].iloc[0] == "C":
+                    raise RuntimeError("Job was cancelled.")
+                time.sleep(0.5)
+            else:
+                raise RuntimeError("Timeout reached while waiting for job to start.")
 
-    command = "sbatch %s" % sbatch_file
-    with console.status(f"Executing {command} on {c.host}"):
-        result = c.run(command, hide=True, warn=True)
-        if result.ok and result.stdout:
-            job_id = result.stdout.strip()
-            console.print(f"Job ID: {job_id}")
-
-    with console.status(f"Removing {sbatch_file} on {c.host}"):
-        c.run(f"rm {sbatch_file}", hide=True, warn=True)
+        with progress.enter_task(f"Waiting for job to finish") as task:
+            for _ in range(hours*3600//2):
+                time.sleep(2)
+                if not is_file(c, output, hide=True):
+                    continue
+                result = c.run(f"tail -n 5 {output}", hide=True, warn=True)
+                if result.ok and result.stdout:
+                    progress.live_display(Panel.fit(result.stdout, title="Output file") )
+                if done_message in result.stdout:
+                    progress.update(task, description=f"Output file ready")
+                    progress.live_display(None)
+                    break
+             
+        with progress.enter_task(f"Getting output files") as task:
+            result = c.run(f"cat {output}", hide=True, warn=True)
+            if result.ok and result.stdout:
+                out = tail(result.stdout, 50)
+                progress.console.print(Panel(out, title="Output file") )
+            result = c.run(f"cat {error}", hide=True, warn=True)
+            if result.ok and result.stdout:
+                err = tail(result.stdout, 50)
+                progress.console.print(Panel(err, title="Error file") )

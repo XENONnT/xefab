@@ -83,7 +83,7 @@ class XeFab(Fab):
         return args + my_args
 
     def task_args(self):
-        return []
+        return super().task_args()
 
     def parse_collection(self):
         user_namespace = None

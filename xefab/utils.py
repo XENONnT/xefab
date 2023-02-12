@@ -14,7 +14,7 @@ from invoke.context import Context
 from invoke.util import enable_logging
 from makefun import wraps
 from rich.console import Console
-from rich.progress import Progress, TextColumn, SpinnerColumn, ProgressColumn
+from rich.progress import Progress, TextColumn, SpinnerColumn, ProgressColumn, Task
 from rich.table import Table
 from rich.theme import Theme
 from rich.console import RenderableType
@@ -133,6 +133,20 @@ def df_to_table(
     return rich_table
 
 
+class SuccessSpinnerColumn(SpinnerColumn):
+    """A spinner column that shows a checkmark when the task 
+    is completed successfully or a x if not.
+    """
+    def render(self, task: Task) -> RenderableType:
+        if task.finished:
+            if task.fields.get('exception', None) is None:
+                return "[bold green]✓[/bold green]"
+            else:
+                return "[bold red]✗[/bold red]"
+        else:
+            return super().render(task)
+
+
 class ProgressContext(Progress):
     """A context manager for rich.progress.Progress.
     Allows entering a task context and task will be completed when exiting
@@ -144,7 +158,7 @@ class ProgressContext(Progress):
     @classmethod
     def get_default_columns(cls) -> Tuple[ProgressColumn, ...]:
         return (
-            SpinnerColumn(finished_text="[bold green]✓[/bold green]"),
+            SuccessSpinnerColumn(),
             TextColumn("[progress.description]{task.description}"),
             SpinnerColumn(spinner_name="simpleDots", finished_text=""),
         )
@@ -169,8 +183,8 @@ class ProgressContext(Progress):
             yield task
         except Exception as e:
             finished_description = exception_description.format(exception=e)
-            if isinstance(self.columns[0], SpinnerColumn):
-                self.columns[0].finished_text = "[red]✘[/red]"
+            self.update(task_id=task, 
+                        exception=e)
             if raise_exceptions:
                 raise e
         finally:
@@ -182,3 +196,8 @@ class ProgressContext(Progress):
         with self._lock:
             self._live_display = renderable
         self.refresh()
+
+
+def tail(text, n=10):
+    """Return the last n lines of a text string."""
+    return "\n".join(text.splitlines()[-n:])

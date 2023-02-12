@@ -10,7 +10,7 @@ from rich.progress import SpinnerColumn, TextColumn
 
 from xefab.utils import ProgressContext, console, get_open_port
 
-from .squeue_task import parse_squeue_output
+from .squeue import parse_squeue_output
 from .utils import print_splash
 
 JOB_NAME = "xefab-jupyter"
@@ -277,11 +277,11 @@ host and forward to local port via ssh-tunnel."""
                     use_reservation = False
                     raise
 
-        with progress.enter_task("Checking for existing jobs"):
-            result = c.run(f"squeue -u {c.user} -n straxlab", hide=True, warn=True)
-            df = parse_squeue_output(result.stdout)
-            job_fn = "/".join([job_folder, "notebook.sbatch"])
-            log_fn = "/".join([job_folder, "notebook.log"])
+        # with progress.enter_task("Checking for existing jobs"):
+        #     result = c.run(f"squeue -u {c.user} -n straxlab", hide=True, warn=True)
+        #     df = parse_squeue_output(result.stdout)
+        job_fn = "/".join([job_folder, "notebook.sbatch"])
+        log_fn = "/".join([job_folder, "notebook.log"])
 
         extra_header = (
             GPU_HEADER
