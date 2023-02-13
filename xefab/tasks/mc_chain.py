@@ -7,6 +7,7 @@ from invoke.watchers import Responder
 from rich.live import Live
 from rich.text import Text
 from rich.panel import Panel
+from rich.console import Group
 from xefab.utils import console, ProgressContext
 
 from .github import clone
@@ -108,26 +109,33 @@ def mc_chain(c,
                         console.print(result.stdout)
                         return
         status_command = None
+        remove_command = None
         for line in result.stdout.splitlines():
             if "pegasus-status" in line:
                 status_command = line.strip()
-                break
-        else:
-            return
-
+            if "pegasus-remove" in line:
+                remove_command = line.strip()
         try:
+            msg = Text("Press Ctrl+C to exit.", style="bold red")
             with progress.enter_task("Monitoring status",):
                 while True:
                     result = c.run(status_command, hide=True)
-                    status = result.stdout
-                    progress.live_display(Panel.fit(status, title="Workflow Status"))
-                    for line in status.splitlines():
+                    status = Panel.fit(result.stdout, title="Workflow Status")
+                    display = Group(status, msg)
+                    progress.live_display(display)
+                    for line in result.stdout.splitlines():
                         if "no matching jobs found in Condor Q" in line:
                             exit(0)
                     time.sleep(2)
         except KeyboardInterrupt:
-            console.print("Keyboard interrupt. Stopping...")
-            exit(0)
+            pass
+
         except Exception as e:
             console.print(e)
-            exit(1)
+    if remove_command is not None:
+        resp = console.input("Cancel workflow? \[y/N]: ")
+        if resp.lower() in ["y", "yes"]:
+            with c.cd(repo_dir):
+                with c.prefix("source setup_env.sh"):
+                    c.run(f"{remove_command}")
+    console.print("Goodbye!")
