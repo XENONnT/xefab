@@ -11,6 +11,8 @@ from xefab.utils import console, filesystem, try_local
 from .admin import add_recipient
 from .install import ensure_dependency, github_cli
 from .shell import which
+from .transfer import rsync
+
 
 namespace = XefabCollection("github")
 
@@ -130,18 +132,24 @@ def clone(c, repo: str, org="XENONnT", dest: str = None, hide: bool = False):
         dest = repo
 
     repo_fullname = f"{org}/{repo}"
+
     if isinstance(c, Connection) and which(c, "gh", local=True, hide=True):
         with tempfile.TemporaryDirectory() as tmpdir:
-            c.local(f"gh repo clone {repo_fullname} {tmpdir}", hide=hide)
+            local_path = os.path.join(tmpdir, repo)
+            c.local(f"gh repo clone {repo_fullname} {local_path}", hide=hide)
             if not hide:
                 console.print(
-                    f"Cloned {repo_fullname} to {tmpdir}. Copying files to remote Host."
+                    f"Cloned {repo_fullname} to {local_path}. Copying files to remote Host."
                 )
-            if not dest.startswith("/"):
+            
+            if not dest.startswith("/") and not dest.startswith("~"):
                 dest = f"/home/{c.user}/{dest}"
-            c.local(
-                f"rsync -avz --progress {tmpdir}/ {c.user}@{c.host}:{dest}/", hide=hide
-            )
+            if dest.endswith(f'/{repo}'):
+                dest = dest[:-len(repo)]
+            if dest.endswith(f'/{repo}/'):
+                dest = dest[:-len(repo)-1]
+            rsync(c, source=local_path, target=dest)
+
     elif which(c, "gh", hide=True):
         c.run(f"gh repo clone {repo_fullname} {dest}", hide=hide)
     else:
