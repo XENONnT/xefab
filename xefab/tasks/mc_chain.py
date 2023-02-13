@@ -4,11 +4,12 @@ from io import StringIO
 
 from fabric.tasks import task
 from invoke.watchers import Responder
-from rich.live import Live
-from rich.text import Text
-from rich.panel import Panel
 from rich.console import Group
-from xefab.utils import console, ProgressContext
+from rich.live import Live
+from rich.panel import Panel
+from rich.text import Text
+
+from xefab.utils import ProgressContext, console
 
 from .github import clone
 from .shell import exists
@@ -16,7 +17,8 @@ from .utils import print_splash
 
 
 @task(pre=[print_splash])
-def mc_chain(c,
+def mc_chain(
+    c,
     simulation_name: str = "Pmt_neutron",
     start_job: int = 0,
     num_events: int = 1000,
@@ -39,7 +41,7 @@ def mc_chain(c,
     run_fast_sim: bool = False,
     sim_nv: bool = False,
     config_file: str = None,
-    ):
+):
     """Run a full chain MC simulation"""
     if config_file is None:
         config = {
@@ -80,13 +82,13 @@ def mc_chain(c,
 
             # Clone the MC repo
             with progress.enter_task("Cloning MC repo"):
-                clone(c, repo = "mc_chain", dest=repo_dir, hide=True)
+                clone(c, repo="mc_chain", dest=repo_dir, hide=True)
 
         # Copy the config file
         with progress.enter_task("Uploading config file"):
             r = c.put(config_file, remote=config_file_remote_path)
 
-        #FIXME: Do we need to renew the user proxy? or just use the shared xenon one?
+        # FIXME: Do we need to renew the user proxy? or just use the shared xenon one?
         # with progress.enter_task("Renewing user certificate proxy"):
         #     password = console.input("Enter GRID pass phrase for this identity:")
         #     responder = Responder(
@@ -102,8 +104,11 @@ def mc_chain(c,
             with c.prefix("source setup_env.sh"):
                 # Run the chain
                 with progress.enter_task("Bulding and submiting workflow"):
-                    result = c.run(f"python mc_chain.py --config {config_file_remote_path} --skip-rucio",
-                            out_stream=progress.console.file, hide=False)
+                    result = c.run(
+                        f"python mc_chain.py --config {config_file_remote_path} --skip-rucio",
+                        out_stream=progress.console.file,
+                        hide=False,
+                    )
                     if result.failed:
                         console.print("Error while building and submitting workflow")
                         console.print(result.stdout)
@@ -117,7 +122,9 @@ def mc_chain(c,
                 remove_command = line.strip()
         try:
             msg = Text("Press Ctrl+C to exit.", style="bold red")
-            with progress.enter_task("Monitoring status",):
+            with progress.enter_task(
+                "Monitoring status",
+            ):
                 while True:
                     result = c.run(status_command, hide=True)
                     status = Panel.fit(result.stdout, title="Workflow Status")

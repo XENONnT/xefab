@@ -2,10 +2,10 @@ import json
 from typing import Callable, Optional
 
 from fabric.tasks import task
+
 from xefab.utils import console
 
 from .shell import get_system, which
-
 
 CONDA_LINKS = {
     "linux": "https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh",
@@ -116,7 +116,9 @@ def github_cli(c, force: bool = False):
     console.print("Done.")
 
 
-@task(aliases=['gpg'],)
+@task(
+    aliases=["gpg"],
+)
 def gnupg(c, force: bool = False):
     if which(c, "gpg", hide=True) and not force:
         console.print("GnuPG already installed on system.")
@@ -133,7 +135,9 @@ def gnupg(c, force: bool = False):
     console.print("Done.")
 
 
-@task(aliases=['conda'], )
+@task(
+    aliases=["conda"],
+)
 def miniconda(c, download_only: bool = False):
     system = get_system(c, hide=True).lower()
     if system not in CONDA_LINKS:

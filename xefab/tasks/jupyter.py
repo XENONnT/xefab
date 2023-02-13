@@ -152,8 +152,9 @@ host and forward to local port via ssh-tunnel."""
     if partition is None:
         partition = "dali" if c.original_host == "dali" else "xenon1t"
 
+    # bind directories inside the container
     if binds is None:
-        binds = "/project2,/scratch,/dali"
+        binds = f"/project2,/scratch/midway2/{c.user},/dali"
     if isinstance(binds, str):
         binds = [bind.strip() for bind in binds.split(",")]
     bind_str = " ".join([f"--bind {bind}" for bind in binds])

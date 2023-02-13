@@ -5,7 +5,6 @@ from xefab.tasks.jupyter import start_jupyter
 from xefab.tasks.squeue import squeue
 from xefab.tasks.transfer import download_file, upload_file
 
-
 namespace = XefabCollection("midway")
 
 namespace.configure(

@@ -149,7 +149,7 @@ class XeFab(Fab):
         if isinstance(parents, str):
             parents = (parents,)
         if isinstance(parents, tuple):
-            parents =  [parents]
+            parents = [parents]
         docstring = inspect.getdoc(task)
         if docstring is None:
             docstring = ""
@@ -163,16 +163,16 @@ class XeFab(Fab):
                     ctx = self.parser.contexts[f"{'.'.join(parent)}.{name}"]
                     tuples = ctx.help_tuples()
                     break
-    
-        if len(parents)>1:
+
+        if len(parents) > 1:
             header = "{} [--core-opts] <Collection> {} {}[other tasks here ...]"
             host_str = ",".join([" ".join(parent) for parent in parents])
         else:
             header = "{} [--core-opts] {} {}[other tasks here ...]"
             host_str = ""
         options_str = "[--options]" if tuples else ""
-        
-        if len(parents)==1:
+
+        if len(parents) == 1:
             name = " ".join(parents[0] + (name,))
         header = header.format(self.binary, name, options_str)
         if host_str:
@@ -216,9 +216,7 @@ class XeFab(Fab):
             tasks.add(task)
 
         for name, subcollection in collection.collections.items():
-            tasks.update(
-                self.unique_tasks(subcollection, parents=parents + (name,))
-            )
+            tasks.update(self.unique_tasks(subcollection, parents=parents + (name,)))
         return tasks
 
     def find_task_paths(self, task, collection, parents=()):
@@ -230,9 +228,7 @@ class XeFab(Fab):
 
         for name, subcollection in collection.collections.items():
             paths.extend(
-                self.find_task_paths(
-                    task, subcollection, parents=parents + (name,)
-                )
+                self.find_task_paths(task, subcollection, parents=parents + (name,))
             )
         return paths
 
@@ -250,7 +246,6 @@ class XeFab(Fab):
         self.display_with_columns(pairs=pairs)
 
     def _make_help_pairs(self, coll, nested=False):
-
         pairs = []
         for name, task in sorted(coll.tasks.items()):
             is_default = name == coll.default
@@ -307,7 +302,7 @@ class XeFab(Fab):
     def list_nested(self):
         """List all tasks in the current namespace."""
         console.print(Text(f"\n\nAvailable Tasks:\n", style="bold"))
-        console.print(self._make_help_tree(self.scoped_collection))        
+        console.print(self._make_help_tree(self.scoped_collection))
 
     def print_task_help(self, name):
         """Print help for a specific task."""

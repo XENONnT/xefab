@@ -4,15 +4,13 @@ import uuid
 from io import BytesIO, StringIO
 from typing import List
 
-from rich.panel import Panel
 from fabric.connection import Connection
 from fabric.tasks import task
-from xefab.tasks.squeue import parse_squeue_output
+from rich.panel import Panel
 
-from xefab.utils import console, ProgressContext, tail
 from xefab.tasks.shell import exists, is_file
-
-
+from xefab.tasks.squeue import parse_squeue_output
+from xefab.utils import ProgressContext, console, tail
 
 SLURM_INSTRUCTIONS = {
     "partition": "partition to submit the job to.",
@@ -20,7 +18,7 @@ SLURM_INSTRUCTIONS = {
     "time": "number of hours to run the job for, can be a `hrs:mins:secs` string or a number.",
     "mem_per_cpu": "memory per cpu.",
     "cpus_per_task": "number of cpus per task.",
-    "jobname": "name of the job.",
+    "job_name": "name of the job.",
     "job": "jobscript to run.",
     "output": "where to save the output of the job.",
     "error": "where to save the error of the job.",
@@ -47,7 +45,6 @@ SLURM_INSTRUCTIONS = {
     "comment": "comment to add to the job.",
     "constraint": "constraint to use.",
     "get_user_env": "get the user environment.",
-
 }
 
 SINGULARITY_ARGUMENTS = {
@@ -112,6 +109,7 @@ def generate_singularity_instructions(command, image_path, **kwargs):
 
     return " ".join(instructions)
 
+
 def generate_env_instructions(**env):
     """Generates the environment variables export commands for the job"""
     if not env:
@@ -132,7 +130,7 @@ SINGULARITY_DIR = "/project2/lgrandi/xenonnt/singularity-images"
         "partition": "partition to submit the job to.",
         "qos": "qos to submit the job to.",
         "account": "account to submit the job to.",
-        "jobname": "how to name this job.",
+        "job_name": "how to name this job.",
         "dry_run": "Just print the job file.",
         "mem_per_cpu": "mb requested for job.",
         "container": "name of the container to activate",
@@ -155,7 +153,7 @@ def sbatch(
     partition: str = "xenon1t",
     qos: str = "xenon1t",
     account: str = "pi-lgrandi",
-    jobname: str = None,
+    job_name: str = None,
     dry_run: bool = False,
     mem_per_cpu: int = 1000,
     container="xenonnt-development.simg",
@@ -176,15 +174,20 @@ def sbatch(
 
     job_id = str(uuid.uuid4()).replace("-", "")[:8]
 
-    if jobname is None:
-        jobname = f"xefab_job_{job_id}"
+    if job_name is None:
+        job_name = f"xefab_job_{job_id}"
 
-     # parse and check arguments
+    if partition == "kicp":
+        qos = "xenon1t-kicp"
+    else:
+        qos = partition
+
+    # parse and check arguments
 
     if bind is None:
         bind = ["/dali", "/project2", "/scratch", "/cvmfs"]
     if len(bind) == 1:
-        bind = bind[0].split(',')
+        bind = bind[0].split(",")
     bind = [b.strip() for b in bind]
 
     if env_dict is None:
@@ -206,25 +209,29 @@ def sbatch(
             else:
                 SCRATCH = f"/scratch/midway2/{c.user}"
 
-            workdir = f"{SCRATCH}/xefab_jobs/{jobname}"
-        
+            workdir = f"{SCRATCH}/xefab_jobs/{job_name}"
+
         if output is None:
-            output = f"{workdir}/{jobname}.out"
+            output = f"{workdir}/{job_name}.out"
         if error is None:
-            error = f"{workdir}/{jobname}.err"
+            error = f"{workdir}/{job_name}.err"
 
         if script.endswith(".py"):
-            remote_script_path = f"{workdir}/{jobname}.py"
+            remote_script_path = f"{workdir}/{job_name}.py"
             command = f"python {remote_script_path}"
         else:
-            remote_script_path = f"{workdir}/{jobname}.sh"
+            remote_script_path = f"{workdir}/{job_name}.sh"
             command = remote_script_path
 
-        sbatch_path = f"{workdir}/{jobname}.sbatch"
+        sbatch_path = f"{workdir}/{job_name}.sbatch"
 
-        with progress.enter_task("Testing remote connection and workdir existince") as task:
+        with progress.enter_task(
+            "Testing remote connection and workdir existince"
+        ) as task:
             if not exists(c, workdir, hide=True):
-                progress.update(task, description=f"Creating workdir {workdir} on {c.host}")
+                progress.update(
+                    task, description=f"Creating workdir {workdir} on {c.host}"
+                )
                 c.run(f"mkdir -p {workdir}", hide=True)
 
         if is_file(c, script, hide=True, local=True):
@@ -243,29 +250,30 @@ def sbatch(
             with progress.enter_task(f"Making script executable"):
                 c.run(f"chmod +x {remote_script_path}", hide=True)
 
-    
         with progress.enter_task(f"Creating sbatch file"):
             slurm_instructions = generate_slurm_instructions(
-                    jobname=jobname,
-                    partition=partition,
-                    qos=qos,
-                    account=account,
-                    mem_per_cpu=mem_per_cpu,
-                    cpus_per_task=cpus_per_task,
-                    hours=hours,
-                    output=output,
-                    error=error,
-                    chdir=workdir,
-                    **extra_instructions,
-                )
+                job_name=job_name,
+                partition=partition,
+                qos=qos,
+                account=account,
+                mem_per_cpu=mem_per_cpu,
+                cpus_per_task=cpus_per_task,
+                hours=hours,
+                output=output,
+                error=error,
+                chdir=workdir,
+                **extra_instructions,
+            )
 
             env_instructions = generate_env_instructions(**env_dict)
 
             if container:
                 image_path = f"{container_dir.rstrip('/')}/{container}"
-                command = generate_singularity_instructions(command, image_path, bind=bind)
+                command = generate_singularity_instructions(
+                    command, image_path, bind=bind
+                )
 
-            done_message = f"Job {jobname} done."
+            done_message = f"Job {job_name} done."
 
             sbatch_content = SBATCH_TEMPLATE.format(
                 slurm_instructions=slurm_instructions,
@@ -273,7 +281,7 @@ def sbatch(
                 command=command,
                 done_message=done_message,
             )
-    
+
         if dry_run:
             progress.live_display(Panel.fit(sbatch_content, title="sbatch file"))
             exit(0)
@@ -281,7 +289,7 @@ def sbatch(
         with progress.enter_task(f"Uploading sbatch file to {c.original_host}"):
             sbatch_fd = StringIO(sbatch_content)
             c.put(sbatch_fd, remote=sbatch_path)
-        
+
         with progress.enter_task(f"Making sbatch file executable"):
             c.run(f"chmod +x {sbatch_path}", hide=True)
 
@@ -289,9 +297,11 @@ def sbatch(
             result = c.run(f"sbatch {sbatch_path}", hide=True, warn=True)
             if result.ok and result.stdout:
                 job_id = int(result.stdout.split()[-1])
-                progress.update(task, description=f"Job submitted to batch queue. Job ID: {job_id}")
+                progress.update(
+                    task, description=f"Job submitted to batch queue. Job ID: {job_id}"
+                )
             else:
-                raise
+                raise RuntimeError("Job submission failed.\n" + result.stdout)
 
         with progress.enter_task(f"Waiting for job to start") as task:
             for _ in range(timeout):
@@ -307,24 +317,24 @@ def sbatch(
                 raise RuntimeError("Timeout reached while waiting for job to start.")
 
         with progress.enter_task(f"Waiting for job to finish") as task:
-            for _ in range(hours*3600//2):
+            for _ in range(hours * 3600 // 2):
                 time.sleep(2)
                 if not is_file(c, output, hide=True):
                     continue
                 result = c.run(f"tail -n 5 {output}", hide=True, warn=True)
                 if result.ok and result.stdout:
-                    progress.live_display(Panel.fit(result.stdout, title="Output file") )
+                    progress.live_display(Panel.fit(result.stdout, title="Output file"))
                 if done_message in result.stdout:
                     progress.update(task, description=f"Output file ready")
                     progress.live_display(None)
                     break
-             
+
         with progress.enter_task(f"Getting output files") as task:
             result = c.run(f"cat {output}", hide=True, warn=True)
             if result.ok and result.stdout:
                 out = tail(result.stdout, 50)
-                progress.console.print(Panel(out, title="Output file") )
+                progress.console.print(Panel(out, title="Output file"))
             result = c.run(f"cat {error}", hide=True, warn=True)
             if result.ok and result.stdout:
                 err = tail(result.stdout, 50)
-                progress.console.print(Panel(err, title="Error file") )
+                progress.console.print(Panel(err, title="Error file"))
