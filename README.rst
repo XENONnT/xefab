@@ -106,6 +106,34 @@ You can get help for a specific task by running e.g.
 .. code-block:: console
 
     $ xf --help midway.start-jupyter
+    ╭─ start-jupyter ───────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+    │ xf [--core-opts] start-jupyter [--options][other tasks here ...]                                                              │
+    │                                                                                                                               │
+    │ Start a jupyter analysis notebook on the remote host and forward to local port via ssh-tunnel.                                │
+    │                                                                                                                               │
+    │ Options:                                                                                                                      │
+    │ --image-dir=STRING                              Directory to look for singularity images                                      │
+    │ --remote-port=STRING                            Port to use for jupyter server to on the worker node                          │
+    │ --=INT, --local-port=INT                        Local port to attempt to forward to (if free)                                 │
+    │ -a INT, --max-hours=INT                         Maximum number of hours to run for                                            │
+    │ -b, --bypass-reservation                        Dont attempt to use the xenon notebook reservation                            │
+    │ -c INT, --cpu=INT                               Number of CPUs to request                                                     │
+    │ -d, --detached                                  Run the job and exit, dont perform cleanup tasks.                             │
+    │ -e STRING, --env=STRING                         Environment to run on                                                         │
+    │ -f, --force-new                                 Force a new job to be started                                                 │
+    │ -g, --gpu                                       Use a GPU                                                                     │
+    │ -i STRING, --binds=STRING                       Directories to bind to the container                                          │
+    │ -j STRING, --jupyter=STRING                     Type of jupyter server to start (lab or notebook)                             │
+    │ -l, --local-cutax                               Use user installed cutax (from ~/.local)                                      │
+    │ -m INT, --timeout=INT                           Timeout for the job to start                                                  │
+    │ -n STRING, --node=STRING                        Node to run on                                                                │
+    │ -o STRING, --notebook-dir=STRING                Directory to start the notebook in                                            │
+    │ -p STRING, --partition=STRING                   Partition to run on (xenon1t or dali)                                         │
+    │ -r INT, --ram=INT                               Amount of RAM to allocate (in MB)                                             │
+    │ -t STRING, --tag=STRING                         Tag of the container to use                                                   │
+    │ -u, --debug                                     Print debug information                                                       │
+    │ -w, --no-browser                                Dont open the browser automatically when done                                 │
+    ╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 
 Some tasks are registered to run on a specific host. When you run them, the --hosts option will be ignored.
 
