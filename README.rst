@@ -100,13 +100,14 @@ You can list the available tasks and options by running xf/xefab without any opt
     sh.path                                                                                                                          
     sh.shell (sh)                     Open interactive shell on remote host.                                                         
     sh.which                                                                   
+
 Some tasks are registered to run on a specific host. When you run them, the --hosts option will be ignored.
 
 e.g. if you run
 
 .. code-block:: console
 
-    $ xefab midway start-jupyter
+    $ xf midway start-jupyter
 
 The task will be run on the midway host, not the host you specified with --hosts.
 
