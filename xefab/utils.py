@@ -179,17 +179,19 @@ class ProgressContext(Progress):
     ):
         """Start and end a task in a progress bar."""
         task = self.add_task(description, total=total)
+        exception = None
         try:
             yield task
         except Exception as e:
             finished_description = exception_description.format(exception=e)
+            exception = e
             self.update(task_id=task, 
-                        exception=e)
-            if raise_exceptions:
-                raise e
+                        exception=True)
         finally:
             description = finished_description or self.tasks[task].description
             self.update(task_id=task, completed=total, description=description)
+        if exception is not None and raise_exceptions:
+            raise RuntimeError(f"Task failed to excecute.") from exception
 
     def live_display(self, renderable):
         """Display a renderable in a panel below the progress bar."""

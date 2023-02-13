@@ -20,7 +20,7 @@ SLURM_INSTRUCTIONS = {
     "time": "number of hours to run the job for, can be a `hrs:mins:secs` string or a number.",
     "mem_per_cpu": "memory per cpu.",
     "cpus_per_task": "number of cpus per task.",
-    "jobname": "name of the job.",
+    "job_name": "name of the job.",
     "job": "jobscript to run.",
     "output": "where to save the output of the job.",
     "error": "where to save the error of the job.",
@@ -132,7 +132,7 @@ SINGULARITY_DIR = "/project2/lgrandi/xenonnt/singularity-images"
         "partition": "partition to submit the job to.",
         "qos": "qos to submit the job to.",
         "account": "account to submit the job to.",
-        "jobname": "how to name this job.",
+        "job_name": "how to name this job.",
         "dry_run": "Just print the job file.",
         "mem_per_cpu": "mb requested for job.",
         "container": "name of the container to activate",
@@ -155,7 +155,7 @@ def sbatch(
     partition: str = "xenon1t",
     qos: str = "xenon1t",
     account: str = "pi-lgrandi",
-    jobname: str = None,
+    job_name: str = None,
     dry_run: bool = False,
     mem_per_cpu: int = 1000,
     container="xenonnt-development.simg",
@@ -176,8 +176,13 @@ def sbatch(
 
     job_id = str(uuid.uuid4()).replace("-", "")[:8]
 
-    if jobname is None:
-        jobname = f"xefab_job_{job_id}"
+    if job_name is None:
+        job_name = f"xefab_job_{job_id}"
+
+    if partition == "kicp":
+        qos = "xenon1t-kicp"
+    else:
+        qos = partition
 
      # parse and check arguments
 
@@ -206,21 +211,21 @@ def sbatch(
             else:
                 SCRATCH = f"/scratch/midway2/{c.user}"
 
-            workdir = f"{SCRATCH}/xefab_jobs/{jobname}"
+            workdir = f"{SCRATCH}/xefab_jobs/{job_name}"
         
         if output is None:
-            output = f"{workdir}/{jobname}.out"
+            output = f"{workdir}/{job_name}.out"
         if error is None:
-            error = f"{workdir}/{jobname}.err"
+            error = f"{workdir}/{job_name}.err"
 
         if script.endswith(".py"):
-            remote_script_path = f"{workdir}/{jobname}.py"
+            remote_script_path = f"{workdir}/{job_name}.py"
             command = f"python {remote_script_path}"
         else:
-            remote_script_path = f"{workdir}/{jobname}.sh"
+            remote_script_path = f"{workdir}/{job_name}.sh"
             command = remote_script_path
 
-        sbatch_path = f"{workdir}/{jobname}.sbatch"
+        sbatch_path = f"{workdir}/{job_name}.sbatch"
 
         with progress.enter_task("Testing remote connection and workdir existince") as task:
             if not exists(c, workdir, hide=True):
@@ -246,7 +251,7 @@ def sbatch(
     
         with progress.enter_task(f"Creating sbatch file"):
             slurm_instructions = generate_slurm_instructions(
-                    jobname=jobname,
+                    job_name=job_name,
                     partition=partition,
                     qos=qos,
                     account=account,
@@ -265,7 +270,7 @@ def sbatch(
                 image_path = f"{container_dir.rstrip('/')}/{container}"
                 command = generate_singularity_instructions(command, image_path, bind=bind)
 
-            done_message = f"Job {jobname} done."
+            done_message = f"Job {job_name} done."
 
             sbatch_content = SBATCH_TEMPLATE.format(
                 slurm_instructions=slurm_instructions,
@@ -291,7 +296,7 @@ def sbatch(
                 job_id = int(result.stdout.split()[-1])
                 progress.update(task, description=f"Job submitted to batch queue. Job ID: {job_id}")
             else:
-                raise
+                raise RuntimeError("Job submission failed.\n" + result.stdout)
 
         with progress.enter_task(f"Waiting for job to start") as task:
             for _ in range(timeout):
