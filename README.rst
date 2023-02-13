@@ -101,6 +101,12 @@ You can list the available tasks and options by running xf/xefab without any opt
     sh.shell (sh)                     Open interactive shell on remote host.                                                         
     sh.which                                                                   
 
+You can get help for a specific task by running e.g.
+
+.. code-block:: console
+
+    $ xf --help midway.start-jupyter
+
 Some tasks are registered to run on a specific host. When you run them, the --hosts option will be ignored.
 
 e.g. if you run
