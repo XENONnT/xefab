@@ -13,12 +13,12 @@ from fabric.connection import Connection
 from invoke.context import Context
 from invoke.util import enable_logging
 from makefun import wraps
-from rich.console import Console
-from rich.progress import Progress, TextColumn, SpinnerColumn, ProgressColumn, Task
+from rich.console import Console, RenderableType
+from rich.panel import Panel
+from rich.progress import (Progress, ProgressColumn, SpinnerColumn, Task,
+                           TextColumn)
 from rich.table import Table
 from rich.theme import Theme
-from rich.console import RenderableType
-from rich.panel import Panel
 
 custom_theme = Theme({"info": "dim cyan", "warning": "magenta", "danger": "bold red"})
 
@@ -134,12 +134,13 @@ def df_to_table(
 
 
 class SuccessSpinnerColumn(SpinnerColumn):
-    """A spinner column that shows a checkmark when the task 
+    """A spinner column that shows a checkmark when the task
     is completed successfully or a x if not.
     """
+
     def render(self, task: Task) -> RenderableType:
         if task.finished:
-            if task.fields.get('exception', None) is None:
+            if task.fields.get("exception", None) is None:
                 return "[bold green]✓[/bold green]"
             else:
                 return "[bold red]✗[/bold red]"
@@ -151,6 +152,7 @@ class ProgressContext(Progress):
     """A context manager for rich.progress.Progress.
     Allows entering a task context and task will be completed when exiting
     """
+
     def __init__(self, *args, **kwargs):
         self._live_display = None
         super().__init__(*args, **kwargs)
@@ -185,8 +187,7 @@ class ProgressContext(Progress):
         except Exception as e:
             finished_description = exception_description.format(exception=e)
             exception = e
-            self.update(task_id=task, 
-                        exception=True)
+            self.update(task_id=task, exception=True)
         finally:
             description = finished_description or self.tasks[task].description
             self.update(task_id=task, completed=total, description=description)
