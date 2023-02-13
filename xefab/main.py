@@ -3,6 +3,8 @@ import inspect
 import sys
 from collections import defaultdict
 
+from .ssh_client import SSHClient
+
 from fabric.executor import Executor
 from fabric.main import Fab
 from invoke.exceptions import Exit
@@ -115,8 +117,9 @@ class XeFab(Fab):
             while self.argv:
                 arg = self.argv.pop(0)
                 if arg in ["-h", "--help", "--list", "-v", "--verbose"]:
-                    argv.append(arg)
+                    argv.insert(0, arg)
                     continue
+
                 if "." in arg:
                     arg, _, rest = arg.partition(".")
                     self.argv.insert(0, rest)
