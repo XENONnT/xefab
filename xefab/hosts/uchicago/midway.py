@@ -1,5 +1,5 @@
 from xefab.collection import XefabCollection
-from xefab.tasks.base import show_context
+from xefab.tasks.main import show_context
 from xefab.tasks.batchq import sbatch
 from xefab.tasks.jupyter import start_jupyter
 from xefab.tasks.squeue import squeue

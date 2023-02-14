@@ -4,15 +4,15 @@ from paramiko.ssh_exception import SSHException
 
 class SSHClient(paramiko.SSHClient):
     password = None
-    
+
     def _2fa_handler(self, title, instructions, prompt_list):
         if not prompt_list:
             return []
-        if 'Password:' in prompt_list[0][0] and self.password is not None:
+        if "Password:" in prompt_list[0][0] and self.password is not None:
             return [self.password]
-        if 'Duo two-factor login' in prompt_list[0][0]:
-            return ['1']
-    
+        if "Duo two-factor login" in prompt_list[0][0]:
+            return ["1"]
+
     def _auth(
         self,
         username,
@@ -38,7 +38,7 @@ class SSHClient(paramiko.SSHClient):
         isn't also given], or for two-factor authentication [for which it is
         required].)
         """
-        
+
         self.password = password
         if self.password is not None:
             try:
@@ -47,7 +47,8 @@ class SSHClient(paramiko.SSHClient):
             except SSHException as e:
                 pass
 
-        super()._auth(username=username,
+        super()._auth(
+            username=username,
             password=password,
             pkey=pkey,
             key_filenames=key_filenames,
@@ -58,7 +59,7 @@ class SSHClient(paramiko.SSHClient):
             gss_deleg_creds=gss_deleg_creds,
             gss_host=gss_host,
             passphrase=passphrase,
-                        )
-    
+        )
+
 
 paramiko.client.SSHClient = SSHClient

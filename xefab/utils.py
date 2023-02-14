@@ -1,6 +1,7 @@
 import contextlib
 import errno
 import os
+import re
 import socket
 from collections import defaultdict
 from inspect import Parameter
@@ -15,8 +16,7 @@ from invoke.util import enable_logging
 from makefun import wraps
 from rich.console import Console, RenderableType
 from rich.panel import Panel
-from rich.progress import (Progress, ProgressColumn, SpinnerColumn, Task,
-                           TextColumn)
+from rich.progress import Progress, ProgressColumn, SpinnerColumn, Task, TextColumn
 from rich.table import Table
 from rich.theme import Theme
 
@@ -39,6 +39,11 @@ if os.environ.get("XEFAB_DEBUG") in ("1", "true", "True"):
 def nested_dict():
     """Create a nested defaultdict."""
     return defaultdict(nested_dict)
+
+
+def camel_to_snake(name):
+    name = re.sub("(.)([A-Z][a-z]+)", r"\1_\2", name)
+    return re.sub("([a-z0-9])([A-Z])", r"\1_\2", name).lower()
 
 
 @function_decorator

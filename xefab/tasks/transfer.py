@@ -1,5 +1,5 @@
-from fabric.tasks import task
 import six
+from fabric.tasks import task
 
 from xefab.utils import console
 

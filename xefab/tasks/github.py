@@ -13,7 +13,6 @@ from .install import ensure_dependency, github_cli
 from .shell import which
 from .transfer import rsync
 
-
 namespace = XefabCollection("github")
 
 
@@ -141,13 +140,13 @@ def clone(c, repo: str, org="XENONnT", dest: str = None, hide: bool = False):
                 console.print(
                     f"Cloned {repo_fullname} to {local_path}. Copying files to remote Host."
                 )
-            
+
             if not dest.startswith("/") and not dest.startswith("~"):
                 dest = f"/home/{c.user}/{dest}"
-            if dest.endswith(f'/{repo}'):
-                dest = dest[:-len(repo)]
-            if dest.endswith(f'/{repo}/'):
-                dest = dest[:-len(repo)-1]
+            if dest.endswith(f"/{repo}"):
+                dest = dest[: -len(repo)]
+            if dest.endswith(f"/{repo}/"):
+                dest = dest[: -len(repo) - 1]
             rsync(c, source=local_path, target=dest)
 
     elif which(c, "gh", hide=True):
