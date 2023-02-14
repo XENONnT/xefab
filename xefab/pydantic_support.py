@@ -1,12 +1,25 @@
 import inspect
 import re
-
+import yaml
+import json
 from fabric.tasks import Task
 from invoke.context import Context
 from makefun import create_function
 from pydantic import BaseModel
+from .utils import camel_to_snake, console
 
-from .utils import camel_to_snake
+
+def read_file(file_path: str):
+    fname, _, ext = file_path.rpartition(".")
+    if ext == "json":
+        with open(file_path) as f:
+            data = json.load(f)
+    elif ext in ["yaml", "yml"]:
+        with open(file_path) as f:
+            data = yaml.safe_load(f)
+    else:
+        raise ValueError(f"Unknown file extension {ext}")
+    return data
 
 
 def get_pydantic_signature(model, defaults={}):
@@ -108,8 +121,9 @@ def task_from_model(model, *args, **kwargs):
     name = camel_to_snake(class_name)
 
     def task_implementation(c, parse_file=None, **kwargs):
+        kwargs = {k: v for k, v in kwargs.items() if v is not None}
         if parse_file is not None:
-            data = model_class.parse_file(parse_file).dict()
+            data = read_file(parse_file)
             kwargs = dict(data, **kwargs)
         model = model_class(**kwargs)
         return model(c)
