@@ -15,8 +15,17 @@ def get_pydantic_signature(model, defaults={}):
         inspect.Parameter.POSITIONAL_ONLY,
         annotation=Context,
     )
+
+    file_param = inspect.Parameter(
+        "parse_file",
+        inspect.Parameter.POSITIONAL_OR_KEYWORD,
+        annotation=str,
+        default=None,
+    )
+
     params = [
         context_param,
+        file_param,
     ]
     for name, field in model.__fields__.items():
         alias = field.alias
@@ -82,9 +91,8 @@ def task_from_model(model, *args, **kwargs):
         defaults = model.dict()
     class_name = model_class.__name__
 
-
     if not issubclass(model_class, BaseModel):
-        raise TypeError(f"{model_class} must be a subclass of pydantic.BaseModel")
+        raise TypeError(f"Cant create a task from type {model_class} must be a subclass of pydantic.BaseModel")
 
     if not hasattr(model, "__call__"):
         raise TypeError(f"{model} must implement a __call__ method to be used as a task.")
@@ -99,7 +107,10 @@ def task_from_model(model, *args, **kwargs):
 
     name = camel_to_snake(class_name)
 
-    def task_implementation(c, **kwargs):
+    def task_implementation(c, parse_file=None, **kwargs):
+        if parse_file is not None:
+            data = model_class.parse_file(parse_file).dict()
+            kwargs = dict(data, **kwargs)
         model = model_class(**kwargs)
         return model(c)
 
