@@ -7,7 +7,7 @@ from xefab.utils import console
 @task
 def download_file(c, path: str, out: str = None, preserve_mode: bool = True):
     """Download a file from a remote server."""
-    
+
     with console.status(f"Downloading {path} from {c.host}"):
         c.get(path, local=out, preserve_mode=preserve_mode)
     console.print(f"Done.")

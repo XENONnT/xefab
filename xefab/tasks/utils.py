@@ -55,7 +55,7 @@ SPLASH_SCREENS = {
 @task
 def print_splash(c):
     """Print the splash screen."""
-    
+
     if hasattr(c, "host"):
         if c.host in SPLASH_SCREENS:
             console.print(Panel.fit(SPLASH_SCREENS[c.host], title="Welcome"))

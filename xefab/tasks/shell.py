@@ -3,7 +3,6 @@ from fabric.tasks import task
 
 from xefab.utils import console
 
-
 SHELL_PROFILE_FILES = {
     "sh": ["~/.profile"],
     "bash": ["~/.profile", "~/.bash_profile"],
@@ -47,7 +46,7 @@ def is_file(c, path: str, local: bool = False, hide: bool = False):
 
 @task
 def is_dir(c, path: str, local: bool = False, hide: bool = False):
-    """Check if a directory exists."""   
+    """Check if a directory exists."""
 
     cmd = f"test -d {path}"
     if local:

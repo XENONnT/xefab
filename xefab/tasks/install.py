@@ -150,7 +150,7 @@ def gnupg(c, force: bool = False):
 )
 def miniconda(c, download_only: bool = False):
     """Install Miniconda."""
-    
+
     system = get_system(c, hide=True).lower()
     if system not in CONDA_LINKS:
         raise RuntimeError(f"{system} currently not supported by this task.")
