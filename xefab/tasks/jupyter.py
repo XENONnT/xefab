@@ -268,7 +268,8 @@ host and forward to local port via ssh-tunnel."""
                 "Notebook reservation requested. Checking availability",
                 finished_description="using Notebook reservation.",
                 exception_description="Notebook reservation does not exist, submitting a regular job.",
-                raise_exceptions=False,
+                warn=True,
+                hide=not debug,
             ):
                 result = c.run("scontrol show reservations", hide=True, warn=True)
                 if (
@@ -276,7 +277,7 @@ host and forward to local port via ssh-tunnel."""
                     or "ReservationName=xenon_notebook" not in result.stdout
                 ):
                     use_reservation = False
-                    raise
+                    raise RuntimeError("Notebook reservation does not exist.")
 
         # with progress.enter_task("Checking for existing jobs"):
         #     result = c.run(f"squeue -u {c.user} -n straxlab", hide=True, warn=True)
@@ -405,7 +406,7 @@ host and forward to local port via ssh-tunnel."""
         with progress.enter_task(
             "Writing server details to file",
             finished_description="Server details saved",
-            raise_exceptions=False,
+            warn=True,
         ):
             details_fd = StringIO(json.dumps(server_details, indent=4))
             c.put(details_fd, remote=server_details_path)
@@ -420,7 +421,7 @@ host and forward to local port via ssh-tunnel."""
             with progress.enter_task(
                 msg + extra_msg,
                 exception_description="Exception raised while forwarding port",
-                raise_exceptions=False,
+                warn=True,
             ) as task:
                 with c.forward_local(
                     local_port, remote_port=remote_port, remote_host=remote_host
@@ -449,7 +450,7 @@ host and forward to local port via ssh-tunnel."""
                 "Canceling job",
                 finished_description="Job canceled",
                 exception_description=f"Could not cancel job. Please cancel it manually. Job ID: {job_id}",
-                raise_exceptions=False,
+                warn=True,
             ):
                 c.run(f"scancel {job_id}", hide=True)
 
@@ -469,7 +470,7 @@ host and forward to local port via ssh-tunnel."""
 
         else:
             # Detached mode - just forward the port and exit
-            with progress.enter_task(msg, raise_exceptions=False) as task:
+            with progress.enter_task(msg, warn=True) as task:
                 result = c.local(
                     f"ssh -fN -L {local_port}:{remote_host}:{remote_port} {c.user}@{c.host} &",
                     disown=True,
