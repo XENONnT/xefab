@@ -39,6 +39,7 @@ def printable(d):
 @task
 def show_context(c, config_name: str = None):
     """Show the context being used for tasks."""
+    
     if config_name is None:
         console.print_json(data=printable(c), indent=4)
         return

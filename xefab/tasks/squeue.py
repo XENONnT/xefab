@@ -8,6 +8,8 @@ from xefab.utils import console, df_to_table
 
 
 def parse_squeue_output(squeue_output):
+    """Parse the output of the squeue command."""
+
     squeue_output = squeue_output.split("\n")
     header, rows = squeue_output[0], squeue_output[1:]
     header_fields = header.split()

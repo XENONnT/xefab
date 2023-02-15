@@ -12,6 +12,8 @@ namespace = XefabCollection("secrets")
 def setup(
     c, name: str = None, email: str = None, repo_url: str = "github.com/XENONnT/secrets"
 ):
+    """Setup gopass."""
+
     if name is None:
         name = console.input("Your name: ")
     if email is None:
@@ -37,6 +39,8 @@ namespace.add_task(setup)
     ]
 )
 def setup_utilix_config(c, apply: bool = False):
+    """Setup the utilix config using chezmoi."""
+
     command = "chezmoi init https://github.com/XENONnT/dotfiles.git"
     result = c.run(command, hide=False, warn=True)
     if result.failed:

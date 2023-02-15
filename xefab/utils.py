@@ -16,8 +16,7 @@ from invoke.util import enable_logging
 from makefun import wraps
 from rich.console import Console, RenderableType
 from rich.panel import Panel
-from rich.progress import (Progress, ProgressColumn, SpinnerColumn, Task,
-                           TextColumn)
+from rich.progress import Progress, ProgressColumn, SpinnerColumn, Task, TextColumn
 from rich.table import Table
 from rich.theme import Theme
 
