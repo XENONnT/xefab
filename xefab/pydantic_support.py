@@ -2,6 +2,7 @@ import inspect
 import re
 import yaml
 import json
+import toml
 from fabric.tasks import Task
 from invoke.context import Context
 from makefun import create_function
@@ -17,6 +18,9 @@ def read_file(file_path: str):
     elif ext in ["yaml", "yml"]:
         with open(file_path) as f:
             data = yaml.safe_load(f)
+    elif ext == "toml":
+        with open(file_path) as f:
+            data = toml.load(f)
     else:
         raise ValueError(f"Unknown file extension {ext}")
     return data
@@ -120,16 +124,19 @@ def task_from_model(model, *args, **kwargs):
 
     name = camel_to_snake(class_name)
 
-    def task_implementation(c, parse_file=None, **kwargs):
-        kwargs = {k: v for k, v in kwargs.items() if v is not None}
-        if parse_file is not None:
-            data = read_file(parse_file)
-            kwargs = dict(data, **kwargs)
-        model = model_class(**kwargs)
-        return model(c)
 
     signature = get_pydantic_signature(model_class, defaults=defaults)
 
+
+    def task_implementation(c, parse_file=None, **kwargs):
+        if parse_file is not None:
+            data = read_file(parse_file)
+            cli_kwargs = {k: v for k, v in kwargs.items() if v != signature.parameters[k].default}
+            merged = dict(data, **cli_kwargs)
+            kwargs = dict(kwargs, **merged)
+        model = model_class(**kwargs)
+        return model(c)
+        
     func = create_function(
         signature, task_implementation, func_name=name, doc=inspect.getdoc(meth)
     )
