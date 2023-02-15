@@ -26,7 +26,7 @@ class TemplateFile(BaseModel):
             return path.read_text()
         else:
             return cls.__TEMPLATE__
-    
+
     @root_validator
     def format_args(cls, values):
         for name, field in cls.__fields__.items():
@@ -34,7 +34,7 @@ class TemplateFile(BaseModel):
             if isinstance(value, str):
                 values[name] = value.format(**values)
         return values
-    
+
     def __init_subclass__(cls):
         if cls.__TEMPLATE__ is None or not cls.__TEMPLATE__.strip():
             raise TypeError("Template class must have a non-empty __TEMPLATE__ attribute defined")
@@ -46,7 +46,7 @@ class TemplateFile(BaseModel):
         template = self.get_template()
         kwargs = self.dict()
         return template.format(**kwargs)
-    
+
     @contextlib.contextmanager
     def open(self, mode='r'):
         if mode == 'r':
@@ -55,7 +55,7 @@ class TemplateFile(BaseModel):
             yield io.BytesIO(self.content.encode())
         else:
             raise RuntimeError('File is not writable')
-        
+
     def deploy(self, c: Context, path, hide=False, warn=False):
         try:
             fs = filesystem(c)
@@ -67,6 +67,6 @@ class TemplateFile(BaseModel):
                 raise e
             if not hide:
                 console.print_exception(show_locals=True)
-            
+
         if not hide:
             console.print(f"Deployed {self.__NAME__} to {path}")
