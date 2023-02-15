@@ -1,6 +1,7 @@
 import contextlib
 import errno
 import os
+import re
 import socket
 from collections import defaultdict
 from inspect import Parameter
@@ -39,6 +40,11 @@ if os.environ.get("XEFAB_DEBUG") in ("1", "true", "True"):
 def nested_dict():
     """Create a nested defaultdict."""
     return defaultdict(nested_dict)
+
+
+def camel_to_snake(name):
+    name = re.sub("(.)([A-Z][a-z]+)", r"\1_\2", name)
+    return re.sub("([a-z0-9])([A-Z])", r"\1_\2", name).lower()
 
 
 @function_decorator
@@ -176,8 +182,9 @@ class ProgressContext(Progress):
         description,
         total=1,
         finished_description=None,
-        exception_description="Failed.\n {exception}",
-        raise_exceptions=True,
+        exception_description="Task failed to excecute.",
+        warn=False,
+        hide=False,
     ):
         """Start and end a task in a progress bar."""
         task = self.add_task(description, total=total)
@@ -191,8 +198,10 @@ class ProgressContext(Progress):
         finally:
             description = finished_description or self.tasks[task].description
             self.update(task_id=task, completed=total, description=description)
-        if exception is not None and raise_exceptions:
-            raise RuntimeError(f"Task failed to excecute.") from exception
+            if exception is not None and not hide:
+                self.console.print_exception(show_locals=True)
+            if exception is not None and not warn:
+                exit(1)
 
     def live_display(self, renderable):
         """Display a renderable in a panel below the progress bar."""

@@ -29,6 +29,8 @@ pymongo = "*"
 fsspec = "^2023.1.0"
 makefun = "^1.15.0"
 decopatch = "^1.4.10"
+pydantic = "^1.10.4"
+toml = "^0.10.2"
 
 [tool.poetry.dev-dependencies]
 bumpversion = "*"

@@ -3,7 +3,11 @@ import inspect
 import sys
 from collections import defaultdict
 
-from .ssh_client import SSHClient
+# IMPORTANT: Must be imported before fabric for monkey patching to work
+# isort: off
+from xefab.ssh_client import SSHClient  # isort: skip
+
+# isort: on
 
 from fabric.executor import Executor
 from fabric.main import Fab
@@ -56,7 +60,7 @@ def help_tuples_to_grid(tuples):
 class XeFab(Fab):
     """XeFab CLI"""
 
-    ROOT_COLLECTION_NAME = "root"
+    ROOT_COLLECTION_NAME = "main"
     USER_COLLECTION_NAME = "my-tasks"
 
     def core_args(self):

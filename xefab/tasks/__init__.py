@@ -1,1 +1,1 @@
-from .base import namespace
+from .main import namespace, task
