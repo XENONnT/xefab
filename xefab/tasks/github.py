@@ -25,6 +25,7 @@ def github_api_call(
     pages: int = 10,
     per_page=50,
 ):
+    """Call the github api and return the result as a list of json documents."""
     promises = []
     for page in range(1, pages + 1):
         cmd = f"gh api {path}?page={page}&per_page={per_page}"
@@ -50,6 +51,8 @@ def github_api_call(
 
 @task
 def is_public(c, repo: str, owner: str = "XENONnT"):
+    """Check if a repo is public."""
+
     for doc in github_api_call(c, f"/users/{owner}/repos", hide=True):
         if doc["name"] == repo:
             return not doc["private"]
@@ -58,6 +61,8 @@ def is_public(c, repo: str, owner: str = "XENONnT"):
 
 @task
 def is_private(c, repo: str, owner: str = "XENONnT"):
+    """Check if a repo is private."""
+
     for doc in github_api_call(c, f"/users/{owner}/repos", hide=True):
         if doc["name"] == repo:
             return doc["private"]
@@ -67,6 +72,7 @@ def is_private(c, repo: str, owner: str = "XENONnT"):
 @task
 @try_local
 def token(c):
+    """Get the github token for the current user."""
     result = c.run(f"gh auth token", hide=True, warn=True)
     if result.failed:
         raise RuntimeError(f"Failed to get github token: {result.stderr}")
@@ -79,6 +85,7 @@ def token(c):
 @task(pre=[ensure_dependency("gh", installer=github_cli)])
 @try_local
 def xenonnt_members(c, hide: bool = False):
+    """List all members of the XENONnT organization."""
     users = github_api_call(c, "orgs/XENONnT/members", hide=True)
 
     usernames = [user["login"] for user in users]
@@ -91,6 +98,7 @@ def xenonnt_members(c, hide: bool = False):
 @task(pre=[ensure_dependency("gh", installer=github_cli)])
 @try_local
 def xenon1t_members(c, hide: bool = False):
+    """List all members of the XENON1T organization."""
     users = github_api_call(c, "orgs/XENON1T/members", hide=True)
 
     usernames = [user["login"] for user in users]
@@ -103,6 +111,7 @@ def xenon1t_members(c, hide: bool = False):
 @task(pre=[ensure_dependency("gh", installer=github_cli)])
 @try_local
 def xenonnt_keys(c, hide: bool = False, add: bool = False):
+    """Get all public keys of all members of the XENONnT organization."""
     users = github_api_call(c, "orgs/XENONnT/members", hide=True)
 
     keys = []
@@ -127,6 +136,12 @@ def xenonnt_keys(c, hide: bool = False, add: bool = False):
 
 @task
 def clone(c, repo: str, org="XENONnT", dest: str = None, hide: bool = False):
+    """Clone a github repository.
+    If the local host has the `gh` cli installed, it will be used to clone
+     the repository and the folder will then be rsynced to the remote host.
+    Alternatively, if the remote host has the `gh` cli installed, it will be
+    used to clone the repository directly into the target dir.
+    Otherwise, the git cli will be used on the host."""
     if dest is None:
         dest = repo
 
@@ -157,6 +172,27 @@ def clone(c, repo: str, org="XENONnT", dest: str = None, hide: bool = False):
         console.print(f"Cloned {repo_fullname} to {c.user}@{c.host}:{dest}.")
 
 
+@task
+def latest_release_tag(c, repo: str, org: str = "XENONnT", hide: bool = False):
+    """Get the latest release tag from a github repository."""
+    with c.prefix("export GH_PAGER=cat"):
+        if isinstance(c, Connection) and which(c, "gh", local=True, hide=True):
+            result = c.local(
+                f"gh api repos/{org}/{repo}/releases/latest", hide=True, warn=False
+            )
+        elif which(c, "gh", hide=True):
+            result = c.run(
+                f"gh api repos/{org}/{repo}/releases/latest", hide=True, warn=False
+            )
+        else:
+            raise ValueError("No github cli found.")
+    release = json.loads(result.stdout)
+    tag = release["tag_name"]
+    if not hide:
+        console.print(tag)
+    return tag
+
+
 namespace.add_task(clone)
 namespace.add_task(is_private)
 namespace.add_task(is_public)
@@ -164,3 +200,4 @@ namespace.add_task(token)
 namespace.add_task(xenon1t_members)
 namespace.add_task(xenonnt_keys)
 namespace.add_task(xenonnt_members)
+namespace.add_task(latest_release_tag)

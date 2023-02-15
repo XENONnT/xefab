@@ -13,6 +13,7 @@ SHELL_PROFILE_FILES = {
 @task(default=True)
 def shell(c: Connection, shell: str = None):
     """Open interactive shell on remote host."""
+
     if shell is None:
         shell = c.config.run.shell
     if isinstance(c, Connection):
@@ -30,6 +31,8 @@ def shell(c: Connection, shell: str = None):
 
 @task
 def is_file(c, path: str, local: bool = False, hide: bool = False):
+    """Check if a file exists."""
+
     cmd = f"test -f {path}"
     if local:
         result = c.local(cmd, hide=True, warn=True)
@@ -43,6 +46,8 @@ def is_file(c, path: str, local: bool = False, hide: bool = False):
 
 @task
 def is_dir(c, path: str, local: bool = False, hide: bool = False):
+    """Check if a directory exists."""
+
     cmd = f"test -d {path}"
     if local:
         result = c.local(cmd, hide=True, warn=True)
@@ -56,6 +61,8 @@ def is_dir(c, path: str, local: bool = False, hide: bool = False):
 
 @task
 def exists(c, path: str, local: bool = False, hide: bool = False):
+    """Check if a file or directory exists."""
+
     cmd = f"test -e {path}"
     if local:
         result = c.local(cmd, hide=hide, warn=True)
@@ -77,6 +84,8 @@ def which(
     shell: str = None,
     hide: bool = False,
 ):
+    """Find the path to a command on the remote host."""
+
     if shell is None:
         shell = "bash"
 
@@ -103,6 +112,8 @@ def which(
 
 @task
 def get_system(c, hide=False):
+    """Deduce the system type of the remote host."""
+
     result = c.run("python -m platform", hide=True, warn=True)
     assert result.ok, "Failed to deduce system."
     system = result.stdout.split("-")[0]
@@ -119,6 +130,8 @@ def path(
     local: bool = False,
     hide: bool = False,
 ):
+    """Print the PATH variable on the remote host."""
+
     if shell is None:
         shell = "bash"
 
