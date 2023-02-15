@@ -156,6 +156,21 @@ def clone(c, repo: str, org="XENONnT", dest: str = None, hide: bool = False):
     if not hide:
         console.print(f"Cloned {repo_fullname} to {c.user}@{c.host}:{dest}.")
 
+@task
+def latest_release_tag(c, repo: str, org: str = "XENONnT", hide: bool = False):
+    with c.prefix('export GH_PAGER=cat'):
+        if isinstance(c, Connection) and which(c, "gh", local=True, hide=True):
+            result = c.local(f"gh api repos/{org}/{repo}/releases/latest", hide=True, warn=False)
+        elif which(c, "gh", hide=True):
+            result = c.run(f"gh api repos/{org}/{repo}/releases/latest", hide=True, warn=False)
+        else:
+            raise ValueError("No github cli found.")
+    release = json.loads(result.stdout)
+    tag = release["tag_name"]
+    if not hide:
+        console.print(tag)
+    return tag
+
 
 namespace.add_task(clone)
 namespace.add_task(is_private)
@@ -164,3 +179,4 @@ namespace.add_task(token)
 namespace.add_task(xenon1t_members)
 namespace.add_task(xenonnt_keys)
 namespace.add_task(xenonnt_members)
+namespace.add_task(latest_release_tag)
