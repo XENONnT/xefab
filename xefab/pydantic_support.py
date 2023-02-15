@@ -1,12 +1,14 @@
 import inspect
-import re
-import yaml
 import json
+import re
+
 import toml
+import yaml
 from fabric.tasks import Task
 from invoke.context import Context
 from makefun import create_function
 from pydantic import BaseModel
+
 from .utils import camel_to_snake, console
 
 
@@ -109,10 +111,14 @@ def task_from_model(model, *args, **kwargs):
     class_name = model_class.__name__
 
     if not issubclass(model_class, BaseModel):
-        raise TypeError(f"Cant create a task from type {model_class} must be a subclass of pydantic.BaseModel")
+        raise TypeError(
+            f"Cant create a task from type {model_class} must be a subclass of pydantic.BaseModel"
+        )
 
     if not hasattr(model, "__call__"):
-        raise TypeError(f"{model} must implement a __call__ method to be used as a task.")
+        raise TypeError(
+            f"{model} must implement a __call__ method to be used as a task."
+        )
 
     meth = getattr(model_class, "__call__")
     run_signature = inspect.signature(meth)
@@ -124,25 +130,28 @@ def task_from_model(model, *args, **kwargs):
 
     name = camel_to_snake(class_name)
 
-
     signature = get_pydantic_signature(model_class, defaults=defaults)
-
 
     def task_implementation(c, parse_file=None, **kwargs):
         if parse_file is not None:
             data = read_file(parse_file)
-            cli_kwargs = {k: v for k, v in kwargs.items() if v != signature.parameters[k].default}
+            cli_kwargs = {
+                k: v for k, v in kwargs.items() if v != signature.parameters[k].default
+            }
             merged = dict(data, **cli_kwargs)
             kwargs = dict(kwargs, **merged)
         model = model_class(**kwargs)
         return model(c)
-        
+
     func = create_function(
         signature, task_implementation, func_name=name, doc=inspect.getdoc(meth)
     )
 
     task_class = kwargs.pop("klass", Task)
-    default_help = {k: get_pydantic_field_help(field, defaults.get(k, None) ) for k, field in model.__fields__.items()}
+    default_help = {
+        k: get_pydantic_field_help(field, defaults.get(k, None))
+        for k, field in model.__fields__.items()
+    }
     kwargs.setdefault("help", default_help)
 
     if not args:

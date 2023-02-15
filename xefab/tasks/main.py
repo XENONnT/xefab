@@ -12,15 +12,14 @@ from xefab.utils import console
 from ..pydantic_support import task_from_model
 from . import admin, github, install, secrets, shell
 
-
 namespace = XefabCollection("root")
 
 
 @decorator
-def task(*args, f = DECORATED, **kwargs):
+def task(*args, f=DECORATED, **kwargs):
     """
-        If used to decorate a pydantic Model, then create a task from the model.
-        If not, then just apply the fabric task decorator.
+    If used to decorate a pydantic Model, then create a task from the model.
+    If not, then just apply the fabric task decorator.
     """
     if (isinstance(f, type) and issubclass(f, BaseModel)) or isinstance(f, BaseModel):
         task = task_from_model(f, *args, **kwargs)
@@ -53,7 +52,6 @@ def show_context(c, config_name: str = None):
         console.print_json(data=result, indent=4)
     else:
         console.print(f"{config_name}: {result}")
-
 
 
 install = XefabCollection.from_module(install, name="install")
