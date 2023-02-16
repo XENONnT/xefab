@@ -1,7 +1,7 @@
 from typing import List
 from importlib_resources import files
 
-from xefab.template_files import TemplateFile
+from xefab.file_access import TemplateFile
 
 
 class RunSim(TemplateFile):
