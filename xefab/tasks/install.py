@@ -29,6 +29,8 @@ def ensure_dependency(dep, local: bool = False, installer: Optional[Callable] = 
 
 @task
 def go(c, force: bool = False):
+    """Install Go."""
+
     if which(c, "go", hide=True) and not force:
         console.print("Go already installed on system.")
         return
@@ -47,6 +49,8 @@ def go(c, force: bool = False):
 
 @task
 def gopass(c, force: bool = False):
+    """Install gopass."""
+
     if which(c, "gopass", hide=True) and not force:
         console.print("Gopass already installed on system.")
         return
@@ -56,6 +60,8 @@ def gopass(c, force: bool = False):
 
 @task
 def chezmoi(c, force: bool = False):
+    """Install chezmoi."""
+
     if which(c, "chezmoi", hide=True) and not force:
         console.print("Chezmoi already installed on system.")
         return
@@ -65,6 +71,8 @@ def chezmoi(c, force: bool = False):
 
 @task(aliases=["gh"])
 def github_cli(c, force: bool = False):
+    """Install the Github CLI."""
+
     console.print("Checking for existing installation.")
     have_gh = which(c, "gh", hide=True)
 
@@ -120,6 +128,8 @@ def github_cli(c, force: bool = False):
     aliases=["gpg"],
 )
 def gnupg(c, force: bool = False):
+    """Install GnuPG."""
+
     if which(c, "gpg", hide=True) and not force:
         console.print("GnuPG already installed on system.")
         return
@@ -139,6 +149,8 @@ def gnupg(c, force: bool = False):
     aliases=["conda"],
 )
 def miniconda(c, download_only: bool = False):
+    """Install Miniconda."""
+
     system = get_system(c, hide=True).lower()
     if system not in CONDA_LINKS:
         raise RuntimeError(f"{system} currently not supported by this task.")

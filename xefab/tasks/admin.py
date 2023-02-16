@@ -7,6 +7,7 @@ from xefab.utils import console
 def add_recipient(
     c, key: dict, gnuhome: str = "~/.gnupg", gopass_store: str = "xenonnt"
 ):
+    """Add a recipient to the gopass store."""
     import gnupg
 
     gpg = gnupg.GPG(homedir=gnuhome)
@@ -25,6 +26,7 @@ def add_recipient(
 
 @task
 def user_db(c, limit: int = None, hide: bool = False):
+    """Get all users from the user database."""
     users = c.config.xent_collection(collection="users").find({}, projection={"_id": 0})
     if limit is not None:
         users = users.limit(int(limit))

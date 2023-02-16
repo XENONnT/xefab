@@ -5,6 +5,25 @@ from fabric.tasks import task
 
 from xefab.utils import console, df_to_table
 
+
+@task(aliases=["job-queue"])
+def condorq(c, all: bool = False, hide: bool = False):
+    """Get the condor job queue."""
+    cmd = "condor_q"
+    if all:
+        cmd += " -allusers"
+    result = c.run(cmd, hide=True, warn=True)
+    if result.failed:
+        console.print(
+            f"Remote execution of {cmd} on {c.host} failed. stderr: {result.stderr}"
+        )
+    df = parse_condorq_output(result.stdout)
+    if not hide:
+        table = df_to_table(df)
+        console.print(table)
+    return df
+
+
 slots = {
     "OWNER": 1,
     "BATCH_NAME": 1,
@@ -16,6 +35,7 @@ slots = {
     "TOTAL": 1,
     "JOB_IDS": 3,
 }
+
 
 mergers = {
     "SUBMITTED": lambda x: pd.to_datetime(
@@ -55,21 +75,4 @@ def parse_condorq_output(condorq_output):
         rows.append(row)
 
     df = pd.DataFrame(rows, columns=columns).dropna(how="all")
-    return df
-
-
-@task(aliases=["job-queue"])
-def condorq(c, all: bool = False, hide: bool = False):
-    cmd = "condor_q"
-    if all:
-        cmd += " -allusers"
-    result = c.run(cmd, hide=True, warn=True)
-    if result.failed:
-        console.print(
-            f"Remote execution of {cmd} on {c.host} failed. stderr: {result.stderr}"
-        )
-    df = parse_condorq_output(result.stdout)
-    if not hide:
-        table = df_to_table(df)
-        console.print(table)
     return df

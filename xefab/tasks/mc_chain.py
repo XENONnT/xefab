@@ -43,6 +43,7 @@ def mc_chain(
     config_file: str = None,
 ):
     """Run a full chain MC simulation"""
+
     if config_file is None:
         config = {
             "simulation_name": simulation_name,
