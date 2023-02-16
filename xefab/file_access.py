@@ -41,8 +41,8 @@ class BaseFile(BaseModel):
         raise NotImplementedError
 
 
-class MultiplexedFile(BaseFile):
-    """ A file that can be in multiple optional locations."""
+class MultiPathFile(BaseFile):
+    """ A file that can be in multiple optional paths."""
 
     paths: List[str] = []
 
@@ -51,12 +51,25 @@ class MultiplexedFile(BaseFile):
         local_fs = filesystem(c, local=True)
 
         for path in self.paths:
-            if fs.is_file(path):
+            if fs.isfile(path):
                 return fs.read_text(path)
-            elif local_fs.is_file(path):
+            elif local_fs.isfile(path):
                 return local_fs.read_text(path)
 
         raise FileNotFoundError(f"Could not find any of {self.paths} on remote or local")
+
+    def read_bytes(self, c: Context):
+        fs = filesystem(c)
+        local_fs = filesystem(c, local=True)
+
+        for path in self.paths:
+            if fs.isfile(path):
+                return fs.read_bytes(path)
+            elif local_fs.isfile(path):
+                return fs.read_bytes(path)
+                
+        raise FileNotFoundError(f"Could not find any of {self.paths} on remote or local")
+
 
 
 class TemplateFile(BaseFile):
