@@ -6,24 +6,19 @@ File access helper classes for optionally remote files.
 import contextlib
 import io
 import os
+import fsspec
 from pathlib import Path
 from typing import List
 
 from fabric.connection import Connection
 from invoke.context import Context
-from pydantic import BaseModel, root_validator
+from pydantic import BaseModel, Field, root_validator, validator
 
 from .utils import console, filesystem
 
 
 class BaseFile(BaseModel):
-    __NAME__: str = None
-
-    def __init_subclass__(cls):
-        if cls.__NAME__ is None or not cls.__NAME__.strip():
-            raise TypeError(
-                "Template class must have a non-empty __NAME__ attribute defined"
-            )
+    name: str = None
 
     @contextlib.contextmanager
     def open(self, c: Context, mode="r"):
@@ -44,32 +39,39 @@ class BaseFile(BaseModel):
 class MultiPathFile(BaseFile):
     """ A file that can be in multiple optional paths."""
 
-    paths: List[str] = []
+    class Config:
+        allow_population_by_field_name = True
+
+    paths: List[str] = Field(alias="path")
+    
+
+    @validator('paths', pre=True, always=True)
+    def validate_paths(cls, v):
+        if isinstance(v, str):
+            return [v]
+        return v
+
+    def _read(self, c, method: str = 'read_text'):
+        fs = filesystem(c)
+        local_fs = filesystem(c, local=True)
+
+        for path in self.paths:
+            protocol = fsspec.utils.get_protocol(path)
+            if protocol != "file":
+                with fsspec.open(path, "r") as f:
+                    return f.read()
+            elif fs.isfile(path):
+                return getattr(fs, method)(path)
+            elif local_fs.isfile(path):
+                return getattr(local_fs, method)(path)
+
+        raise FileNotFoundError(f"Could not find any of {self.paths} on remote or local")
 
     def read_text(self, c: Context):
-        fs = filesystem(c)
-        local_fs = filesystem(c, local=True)
-
-        for path in self.paths:
-            if fs.isfile(path):
-                return fs.read_text(path)
-            elif local_fs.isfile(path):
-                return local_fs.read_text(path)
-
-        raise FileNotFoundError(f"Could not find any of {self.paths} on remote or local")
+        return self._read(c, method='read_text')
 
     def read_bytes(self, c: Context):
-        fs = filesystem(c)
-        local_fs = filesystem(c, local=True)
-
-        for path in self.paths:
-            if fs.isfile(path):
-                return fs.read_bytes(path)
-            elif local_fs.isfile(path):
-                return fs.read_bytes(path)
-                
-        raise FileNotFoundError(f"Could not find any of {self.paths} on remote or local")
-
+        return self._read(c, method='read_bytes')
 
 
 class TemplateFile(BaseFile):
@@ -80,8 +82,10 @@ class TemplateFile(BaseFile):
     All fields in the model will be available to the template.
     """
 
-    __NAME__: str = None
+    
     __TEMPLATE__: str = None
+
+    filename: str
 
     @classmethod
     def get_template(cls):
@@ -118,7 +122,7 @@ class TemplateFile(BaseFile):
         try:
             fs = filesystem(c)
             fs.makedirs(path, exist_ok=True)
-            full_path = fs.sep.join([path, self.__NAME__])
+            full_path = fs.sep.join([path, self.filename])
             fs.write_text(full_path, self.read_text())
         except Exception as e:
             if not warn:
@@ -127,4 +131,4 @@ class TemplateFile(BaseFile):
                 console.print_exception(show_locals=True)
 
         if not hide:
-            console.print(f"Deployed {self.__NAME__} to {path}")
+            console.print(f"Deployed {self.filename} to {path}")
