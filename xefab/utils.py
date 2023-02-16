@@ -75,14 +75,14 @@ def try_local(exception=Exception, f=DECORATED):
     return wrapper
 
 
-def filesystem(c: Union[Connection, Context]):
+def filesystem(c: Union[Connection, Context], local: bool = False) -> fsspec.AbstractFileSystem:
     """Get a fsspec filesystem object from a fabric Connection/Invoke Context object."""
-    if isinstance(c, Connection):
+    if isinstance(c, Connection) and not local:
         return fsspec.filesystem(
             "sftp", host=c.host, username=c.user, port=c.port, **c.connect_kwargs
         )
-    else:
-        return fsspec.filesystem("file")
+
+    return fsspec.filesystem("file", root=c.cwd())
 
 
 def get_open_port(start=5000, end=None, bind_address="", *socket_args, **socket_kwargs):
