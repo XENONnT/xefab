@@ -25,7 +25,8 @@ def parse_squeue_output(squeue_output):
 
 @task(aliases=["job-queue"])
 def squeue(
-    c: Connection, user: str = "me", partition: str = None, out: str = ""
+    c: Connection, user: str = "me", partition: str = None, out: str = "", 
+    hide: bool = False, warn: bool = False,
 ) -> pd.DataFrame:
     """Get the job-queue status."""
 
@@ -41,10 +42,10 @@ def squeue(
     if partition:
         command += f" -p {partition}"
 
-    with console.status(f"Running {command} on {c.host}..."):
-        r = c.run(command, hide=True, warn=True)
-        squeue_output = r.stdout
-    if r.failed:
+    
+    r = c.run(command, hide=hide, warn=True)
+    squeue_output = r.stdout
+    if r.failed and not warn:
         console.print("Remote execution of squeue on {c.host} failed. stderr:")
         console.print(r.stderr)
         exit(r.return_code)
@@ -56,10 +57,11 @@ def squeue(
             df.to_csv(out, index=False)
             time.sleep(0.5)
         console.print(f"Output written to {out}")
-    else:
+    if not hide:
         table = df_to_table(df)
         if len(df) > 10:
             with console.pager():
                 console.print(table)
         else:
             console.print(table)
+    return df
