@@ -1,40 +1,24 @@
 #!/bin/bash
 
-# 1: batch number
-# 2: output tarball
-# 3: simulate neutron veto
-# 4: epix config micro seperation
-# 5: epix config tag cluster by
-# 6: epix nr_only
-# 7: epix detector config override
-
-BATCH_NUMBER=$1
-OUTPUT_TARBALL=$2
-SIM_NV=$3
-EPIX_MICROSEPARATION=$4
-EPIX_TAGCLUSTERBY=${5}
-EPIX_NRONLY=${6}
-EPIX_DETECTORCONFIG=${7}
-
 set -e
 
 NVFLAG=""
 
-echo "Sim_NV: ${SIM_NV}"
-if [ "${SIM_NV}" = "1" ]; then
+echo "Sim_NV: {sim_nv}"
+if [ "{sim_nv}" = "1" ]; then
     echo "Simulating neutron veto!"
     NVFLAG="--NeutronVeto"
 fi
-echo "NVFLAG: ${NVFLAG}"
+echo "NVFLAG: ${{NVFLAG}}"
 
 echo "python merge_wfsim.py --output merged_data \
                       --input data \
-                      --batch ($BATCH_NUMBER) \
-                      --EpixDetectorOverride ($EPIX_DETECTORCONFIG) \
-                      --EpixMicroSeparation ($EPIX_MICROSEPARATION) \
-                      --EpixTagClusterBy ($EPIX_TAGCLUSTERBY) \
-                      --EpixNROnly ($EPIX_NRONLY) \
-                      ($NVFLAG)"
+                      --batch {batch_number} \
+                      --EpixDetectorOverride {epix_detectorconfig} \
+                      --EpixMicroSeparation {epix_microseparation} \
+                      --EpixTagClusterBy {epix_tagclusterby} \
+                      --EpixNROnly {epix_nronly} \
+                      $NVFLAG"
 
 echo "Here's what is in the output directory ($PWD)"
 ls -la
@@ -59,17 +43,17 @@ export RUCIO_ACCOUNT=xenon-mc
 
 python merge_wfsim.py --output merged_data \
                       --input data \
-                      --batch $BATCH_NUMBER \
-                      --EpixDetectorOverride $EPIX_DETECTORCONFIG \
-                      --EpixMicroSeparation $EPIX_MICROSEPARATION \
-                      --EpixTagClusterBy $EPIX_TAGCLUSTERBY \
-                      --EpixNROnly $EPIX_NRONLY \
+                      --batch {batch_number} \
+                      --EpixDetectorOverride {epix_detectorconfig} \
+                      --EpixMicroSeparation {epix_microseparation} \
+                      --EpixTagClusterBy {epix_tagclusterby} \
+                      --EpixNROnly {epix_nronly} \
                       $NVFLAG
 
 # remove the dummy files we made for run metata
 rm merged_data/*json
 
 # tar up the merged output
-tar cvjf $OUTPUT_TARBALL merged_data
+tar cvjf {output_tarball} merged_data
 
 echo "DONE"
