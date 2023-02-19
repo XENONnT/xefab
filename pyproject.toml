@@ -62,7 +62,7 @@ requires = ["poetry-core>=1.0.8", "setuptools"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.setuptools.packages.find]
-where = ["data"]
+where = ["xefab.data"]
 
 [tool.dephell.main]
 versioning = "semver"
