@@ -165,7 +165,7 @@ host and forward to local port via ssh-tunnel."""
     env_vars = {}
 
     if local_cutax:
-        console.warn(
+        console.print(
             "Container cutax being overwritten by user installed package.",
             style="warning",
         )
