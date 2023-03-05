@@ -8,6 +8,7 @@ from rich.console import Group
 from rich.live import Live
 from rich.panel import Panel
 from rich.text import Text
+from rich.prompt import Confirm
 
 from xefab.utils import ProgressContext, console
 
@@ -140,9 +141,9 @@ def mc_chain(
 
         except Exception as e:
             console.print(e)
-    if remove_command is not None:
-        resp = console.input("Cancel workflow? \[y/N]: ")
-        if resp.lower() in ["y", "yes"]:
+    if remove_command is not None:        
+        cancel = Confirm.ask("Cancel workflow?")
+        if cancel:
             with c.cd(repo_dir):
                 with c.prefix("source setup_env.sh"):
                     c.run(f"{remove_command}")
