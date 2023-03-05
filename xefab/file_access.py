@@ -104,9 +104,9 @@ class TemplateFile(BaseFile):
         return values
 
     def __init_subclass__(cls):
-        if cls.__TEMPLATE__ is None or not cls.__TEMPLATE__.strip():
+        if cls.__TEMPLATE__ is None:
             raise TypeError(
-                "Template class must have a non-empty __TEMPLATE__ attribute defined"
+                "Template class must have a __TEMPLATE__ attribute defined"
             )
         super().__init_subclass__()
 
