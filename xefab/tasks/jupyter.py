@@ -54,22 +54,9 @@ jupyter {jupyter} --no-browser --port={port} --ip=0.0.0.0 --notebook-dir {notebo
 """
 
 
-START_NOTEBOOK_SH = """
-#!/bin/bash
-
-echo "Using singularity image: {CONTAINER}"
-
-SINGULARITY_CACHEDIR=/scratch/midway2/{USER}/singularity_cache
-
-module load singularity
-
-singularity exec {BIND_STR} {CONTAINER} jupyter {JUPYTER_TYPE} --no-browser --port={PORT} --ip=0.0.0.0 --notebook-dir {NOTEBOOK_DIR}
-
-"""
-
 START_JUPYTER_SINGULARITY = """
 
-SINGULARITY_CACHEDIR=/scratch/midway2/{user}/singularity_cache
+SINGULARITY_CACHEDIR=/home/{user}/scratch/singularity_cache
 
 module load singularity
 
@@ -157,6 +144,10 @@ host and forward to local port via ssh-tunnel."""
         binds = f"/project2,/scratch/midway2/{c.user},/dali"
     if isinstance(binds, str):
         binds = [bind.strip() for bind in binds.split(",")]
+    
+    if partition == "xenon1t" and '/dali' not in binds:
+        binds.append("/project2/lgrandi/xenonnt/dali/lgrandi/xenonnt/software/cutax:/xenon/xenonnt/software/cutax")
+
     bind_str = " ".join([f"--bind {bind}" for bind in binds])
 
     console.print(f"Using partition {partition}", style="info")
@@ -178,17 +169,7 @@ host and forward to local port via ssh-tunnel."""
                 c.run("mkdir -p " + job_folder)
 
         if env == "singularity":
-            with progress.enter_task("Building singularity runner script"):
-                s_container = f"{image_dir}/xenonnt-{tag}.simg"
-                starter_path = f"{job_folder}/start_notebook.sh"
-                starter_script = START_NOTEBOOK_SH.format(
-                    CONTAINER=s_container,
-                    JUPYTER_TYPE=jupyter,
-                    NOTEBOOK_DIR=notebook_dir,
-                    PORT=remote_port,
-                    BIND_STR=bind_str,
-                    USER=c.user,
-                )
+            s_container = f"{image_dir}/xenonnt-{tag}.simg"
 
             # Add the singularity runner script to the batch job
             # batch_job = JOB_HEADER + f"{starter_path} "
@@ -200,15 +181,6 @@ host and forward to local port via ssh-tunnel."""
                 notebook_dir=notebook_dir,
                 port=remote_port,
             )
-
-            with progress.enter_task(
-                "Uploading singularity runner script",
-                finished_description="Singularity runner script uploaded",
-            ) as task:
-                starter_script_fd = StringIO(starter_script)
-                c.put(starter_script_fd, remote=starter_path)
-                progress.update(task, description="Making script executable")
-                c.run(f"chmod +x {starter_path}")
 
         elif env == "cvmfs":
             batch_job = (
