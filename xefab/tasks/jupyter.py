@@ -7,10 +7,12 @@ from string import ascii_lowercase
 
 from fabric.tasks import task
 from rich.progress import SpinnerColumn, TextColumn
+from rich.prompt import IntPrompt
+from xefab.tasks.shell import is_file
 
 from xefab.utils import ProgressContext, console, get_open_port
 
-from .squeue import parse_squeue_output
+from .squeue import parse_squeue_output, squeue
 from .utils import print_splash
 
 JOB_NAME = "xefab-jupyter"
@@ -128,14 +130,6 @@ host and forward to local port via ssh-tunnel."""
 
     REMOTE_HOME = f"/home/{c.user}"
 
-    unique_id = "".join(choices(ascii_lowercase, k=4))
-    date = time.strftime("%Y%m%d")
-
-    job_name = f"jupyter_{unique_id}_{date}"
-    job_folder = f"{REMOTE_HOME}/xefab_jobs/{job_name}"
-
-    server_details_path = f"{job_folder}/server_details.json"
-
     if image_dir is None:
         image_dir = "/project2/lgrandi/xenonnt/singularity-images"
 
@@ -159,7 +153,7 @@ host and forward to local port via ssh-tunnel."""
 
     bind_str = " ".join([f"--bind {bind}" for bind in binds])
 
-    console.print(f"Using partition {partition}", style="info")
+    console.print(f"Using partition {partition}")
 
     local_port = get_open_port(start=local_port)
     env_vars = {}
@@ -171,7 +165,58 @@ host and forward to local port via ssh-tunnel."""
         )
         env_vars["INSTALL_CUTAX"] = "0"
 
+    
+    if not force_new:
+        with ProgressContext() as progress:
+            existing_jobs = {}
+            with progress.enter_task("Checking for existing jobs") as task:
+                # Check for existing jobs
+                existing_jobs = get_existing_jobs(c)
+
+                if existing_jobs:
+                    progress.update(task, description="Found existing jobs.")
+                else:
+                    progress.update(task, description="No existing jobs found.")
+
+        if existing_jobs:
+            console.print("Found existing jobs, options:")
+            progress.console.print(f"(0): Start new job",)
+            jobnames = list(existing_jobs)
+            for i, job_name in enumerate(jobnames):
+                console.print(
+                    f"({i+1}): {job_name}", 
+                )
+            
+            selection = IntPrompt.ask(
+                "Select a job to connect to or start new job",
+                choices=list(map(str,range(0, len(jobnames) + 1))),
+                console=progress.console, default='0',
+            )
+    
+
+            if selection < len(jobnames) + 1:
+                job_name = jobnames[selection - 1]
+                server_details = existing_jobs[job_name]
+                job_folder = f"{REMOTE_HOME}/xefab_jobs/{job_name}"
+
+                with ProgressContext() as progress:
+                    attach_to_job(c, job_id=server_details['job_id'], local_port=local_port, 
+                                remote_host=server_details['remote_host'],
+                                remote_port=server_details['remote_port'], 
+                                token=server_details['token'], progress=progress,
+                                job_folder=job_folder, no_browser=no_browser, 
+                                detached=detached, debug=debug)
+                    return
+
     with ProgressContext() as progress:
+        unique_id = "".join(choices(ascii_lowercase, k=4))
+        date = time.strftime("%Y%m%d")
+
+        job_name = f"jupyter_{unique_id}_{date}" 
+        job_folder = f"{REMOTE_HOME}/xefab_jobs/{job_name}"
+
+        server_details_path = f"{job_folder}/server_details.json"
+
         with progress.enter_task("Checking connection and destination folder"):
             if not c.run(f"test -d {job_folder}", warn=True).ok:
                 progress.console.print(f"Creating {job_folder} on {c.host}")
@@ -367,10 +412,8 @@ host and forward to local port via ssh-tunnel."""
             remote_host, remote_port = url.split("/")[2].split(":")
             if "token" in url:
                 token = url.split("?")[1].split("=")[1]
-                local_url = f"http://localhost:{local_port}?token={token}"
             else:
                 token = ""
-                local_url = f"http://localhost:{local_port}"
 
         # Can never be too careful, make sure port numbers are integers
         local_port = int(local_port)
@@ -393,77 +436,101 @@ host and forward to local port via ssh-tunnel."""
             details_fd = StringIO(json.dumps(server_details, indent=4))
             c.put(details_fd, remote=server_details_path)
 
+        attach_to_job(c, job_id=job_id, local_port=local_port, remote_host=remote_host,
+            remote_port=remote_port, token=token, progress=progress, job_folder=job_folder,
+            no_browser=no_browser, detached=detached, debug=debug)
+
+def attach_to_job(c, *, job_id, local_port, remote_host, 
+            remote_port, token, progress, job_folder,
+            no_browser=False, detached=False, debug=False):
+    """Attach to a running job."""
+
         # Handle port forwarding
-        msg = f"Forwarding remote address {remote_host}:{remote_port} to local port {local_port}"
-        if not detached:
-            extra_msg = (
-                f"\nYou can access the notebook at \n{local_url}\n"
-                "   Press ENTER or CTRL-C to deactivate and cancel job."
-            )
-            with progress.enter_task(
-                msg + extra_msg,
-                exception_description="Exception raised while forwarding port",
-                warn=True,
-            ) as task:
-                with c.forward_local(
-                    local_port, remote_port=remote_port, remote_host=remote_host
-                ):
-                    time.sleep(3)
-
-                    if not no_browser:
-                        result = c.local(
-                            f"python -m webbrowser -t {local_url}", hide=True, warn=True
-                        )
-                    try:
-                        r = progress.console.input()
-                        progress.update(
-                            task, description="Deactivating port forwarding"
-                        )
-                        time.sleep(2)
-                    except KeyboardInterrupt:
-                        console.print("Keyboard interrupt received.")
-                    except Exception as e:
-                        if debug:
-                            console.print(f"Exception raised: {e}")
-                        else:
-                            console.print(f"Exception raised.")
-
-            with progress.enter_task(
-                "Canceling job",
-                finished_description="Job canceled",
-                exception_description=f"Could not cancel job. Please cancel it manually. Job ID: {job_id}",
-                warn=True,
+    if token:
+        local_url = f"http://localhost:{local_port}?token={token}"
+    else:
+        local_url = f"http://localhost:{local_port}"
+    msg = f"Forwarding remote address {remote_host}:{remote_port} to local port {local_port}"
+    if not detached:
+        extra_msg = (
+            f"\nYou can access the notebook at \n{local_url}\n"
+            "   Press ENTER or CTRL-C to deactivate and cancel job."
+        )
+        with progress.enter_task(
+            msg + extra_msg,
+            exception_description="Exception raised while forwarding port",
+            warn=True,
+        ) as task:
+            with c.forward_local(
+                local_port, remote_port=remote_port, remote_host=remote_host
             ):
-                c.run(f"scancel {job_id}", hide=True)
-
-            if not debug:
-                with progress.enter_task(
-                    "Cleaning up job files",
-                    finished_description="Job folder removed",
-                    exception_description=f"Could not remove job folder. Please remove it manually. Path: {job_folder}",
-                ):
-                    for _ in range(3):
-                        time.sleep(2)
-                        result = c.run(f"rm -rf {job_folder}", hide=True, warn=True)
-                        if result.ok:
-                            break
-                    else:
-                        raise
-
-        else:
-            # Detached mode - just forward the port and exit
-            with progress.enter_task(msg, warn=True) as task:
-                result = c.local(
-                    f"ssh -fN -L {local_port}:{remote_host}:{remote_port} {c.user}@{c.host} &",
-                    disown=True,
-                    hide=False,
-                    warn=True,
-                )
                 time.sleep(3)
-                console.print(f"You can access the notebook at \n{local_url}\n")
-                if result.ok and not no_browser:
-                    c.local(
+
+                if not no_browser:
+                    result = c.local(
                         f"python -m webbrowser -t {local_url}", hide=True, warn=True
                     )
+                try:
+                    r = progress.console.input()
+                    progress.update(
+                        task, description="Deactivating port forwarding"
+                    )
+                    time.sleep(2)
+                except KeyboardInterrupt:
+                    console.print("Keyboard interrupt received.")
+                except Exception as e:
+                    if debug:
+                        console.print(f"Exception raised: {e}")
+                    else:
+                        console.print(f"Exception raised.")
+
+        with progress.enter_task(
+            "Canceling job",
+            finished_description="Job canceled",
+            exception_description=f"Could not cancel job. Please cancel it manually. Job ID: {job_id}",
+            warn=True,
+        ):
+            c.run(f"scancel {job_id}", hide=True)
+
+        if not debug:
+            with progress.enter_task(
+                "Cleaning up job files",
+                finished_description="Job folder removed",
+                exception_description=f"Could not remove job folder. Please remove it manually. Path: {job_folder}",
+            ):
+                for _ in range(3):
+                    time.sleep(2)
+                    result = c.run(f"rm -rf {job_folder}", hide=True, warn=True)
+                    if result.ok:
+                        break
+                else:
+                    raise
+
+    else:
+        # Detached mode - just forward the port and exit
+        with progress.enter_task(msg, warn=True) as task:
+            result = c.local(
+                f"ssh -fN -L {local_port}:{remote_host}:{remote_port} {c.user}@{c.host} &",
+                disown=True,
+                hide=False,
+                warn=True,
+            )
+            time.sleep(3)
+            console.print(f"You can access the notebook at \n{local_url}\n")
+            if result.ok and not no_browser:
+                c.local(
+                    f"python -m webbrowser -t {local_url}", hide=True, warn=True
+                )
 
     console.print("Goodbye!")
+
+
+def get_existing_jobs(c):
+    """Find all running jupyter jobs on the remote host."""
+    df = squeue(c, hide=True)
+    running = {}
+    for job_name in df["NAME"]:
+        details_path = f"/home/{c.user}/xefab_jobs/{job_name}/server_details.json"
+        if job_name.startswith('jupyter') and is_file(c, details_path, hide=True):
+            running[job_name] = json.loads(c.run(f"cat {details_path}", hide=True).stdout)
+    return running
