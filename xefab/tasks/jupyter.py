@@ -30,7 +30,7 @@ JOB_HEADER = """#!/bin/bash
 {extra_header}
 
 export NUMEXPR_MAX_THREADS={n_cpu}
-echo Starting jupyter job
+
 
 """
 
@@ -52,19 +52,28 @@ CPU_HEADER = """\
 # (for singularity, starting jupyter is done in _xentenv_inner)
 START_JUPYTER = """
 echo $PYTHONPATH
+echo Starting jupyter job
+
 jupyter {jupyter} --no-browser --port={port} --ip=0.0.0.0 --notebook-dir {notebook_dir} 2>&1
 """
 
 
 START_JUPYTER_SINGULARITY = """
+SINGULARITY_CACHEDIR=$TMPDIR/singularity_cache
 
-SINGULARITY_CACHEDIR=/home/{user}/scratch/singularity_cache
+mkdir -p $SINGULARITY_CACHEDIR
+
+# SINGULARITY_CACHEDIR=/home/{user}/scratch/singularity_cache
+echo Loading singularity module
 
 module load singularity
 
-singularity exec {bind_str} {container} jupyter {jupyter} --no-browser --port={port} --ip=0.0.0.0 --notebook-dir {notebook_dir}
-"""
+echo Starting jupyter job
 
+singularity exec {bind_str} {container} jupyter {jupyter} --no-browser --port={port} --ip=0.0.0.0 
+
+"""
+# --notebook-dir {notebook_dir}
 
 @task(
     pre=[print_splash],
@@ -139,7 +148,7 @@ host and forward to local port via ssh-tunnel."""
     if isinstance(binds, str):
         binds = [bind.strip() for bind in binds.split(",")]
     
-    if partition == "xenon1t" and '/dali' not in binds:
+    if partition == "xenon1t":
         binds.append("/project2/lgrandi/xenonnt/dali/lgrandi/xenonnt/software/cutax:/xenon/xenonnt/software/cutax")
 
     bind_str = " ".join([f"--bind {bind}" for bind in binds])
@@ -214,7 +223,8 @@ host and forward to local port via ssh-tunnel."""
                 c.run("mkdir -p " + job_folder)
 
         if env == "singularity":
-            s_container = f"{image_dir}/xenonnt-{tag}.simg"
+            s_container = f"/cvmfs/singularity.opensciencegrid.org/xenonnt/base-environment:{tag}"
+            # s_container = f"{image_dir}/xenonnt-{tag}.simg"
 
             # Add the singularity runner script to the batch job
             # batch_job = JOB_HEADER + f"{starter_path} "
