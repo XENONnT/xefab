@@ -121,7 +121,7 @@ class XeFab(Fab):
             while self.argv:
                 arg = self.argv.pop(0)
                 if arg in ["-h", "--help", "--list", "-v", "--verbose"]:
-                    argv.insert(0, arg)
+                    argv.insert(1, arg)
                     continue
 
                 if "." in arg:
@@ -147,6 +147,7 @@ class XeFab(Fab):
             # if we loaded a host collection, it sets the default host argument
             if not self.args.hosts.value and hostname is not None:
                 self.args.hosts.value = hostname
+        
         super().parse_collection()
 
     def task_panel(self, task, name, parents=None):
