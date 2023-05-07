@@ -17,6 +17,25 @@ from .utils import print_splash
 
 JOB_NAME = "xefab-jupyter"
 
+CONTAINER_PATHS = {
+    "xenon1t": [
+        "/project2/lgrandi/xenonnt/singularity-images/xenonnt-{tag}.simg",
+        "/cvmfs/singularity.opensciencegrid.org/xenonnt/base-environment:{tag}"
+    ],
+
+    "dali": [
+        "/dali/lgrandi/xenonnt/singularity-images/xenonnt-{tag}.simg",
+        "/cvmfs/singularity.opensciencegrid.org/xenonnt/base-environment:{tag}",
+    ],
+
+    }
+
+def find_container_path(c, partition, tag):
+    for path in CONTAINER_PATHS[partition]:
+        path = path.format(tag=tag)
+        if is_file(c, path):
+            return path
+    raise ValueError(f"No container found for {partition} and tag {tag}")
 
 JOB_HEADER = """#!/bin/bash
 #SBATCH --job-name={job_name}
@@ -97,7 +116,7 @@ singularity exec {bind_str} {container} jupyter {jupyter} --no-browser --port={p
         "remote_port": "Port to use for jupyter server to on the worker node",
         "detached": "Run the job and exit, dont perform cleanup tasks.",
         "no_browser": "Dont open the browser automatically when done",
-        "image_dir": "Directory to look for singularity images",
+        "image_path": "Override path for singularity images",
         "debug": "Print debug information",
     },
 )
@@ -122,16 +141,13 @@ def start_jupyter(
     remote_port: int = None,
     detached: bool = False,
     no_browser: bool = False,
-    image_dir: str = None,
+    image_path: str = None,
     debug: bool = False,
 ):
     """Start a jupyter analysis notebook on the remote \
 host and forward to local port via ssh-tunnel."""
 
     REMOTE_HOME = f"/home/{c.user}"
-
-    if image_dir is None:
-        image_dir = "/project2/lgrandi/xenonnt/singularity-images"
 
     if notebook_dir is None:
         notebook_dir = REMOTE_HOME
@@ -143,13 +159,15 @@ host and forward to local port via ssh-tunnel."""
         partition = "dali" if c.original_host == "dali" else "xenon1t"
 
     # bind directories inside the container
-    if binds is None:
-        binds = f"/project2,/scratch/midway2/{c.user},/dali"
+   
     if isinstance(binds, str):
         binds = [bind.strip() for bind in binds.split(",")]
     
     if partition == "xenon1t":
+        binds = binds or f"/project,/project2,/scratch/midway2/{c.user}".split(",")
         binds.append("/project2/lgrandi/xenonnt/dali/lgrandi/xenonnt/software/cutax:/xenon/xenonnt/software/cutax")
+    else:
+        binds = binds or f"/dali,/scratch/dali/{c.user}".split(",")
 
     bind_str = " ".join([f"--bind {bind}" for bind in binds])
 
@@ -223,7 +241,11 @@ host and forward to local port via ssh-tunnel."""
                 c.run("mkdir -p " + job_folder)
 
         if env == "singularity":
-            s_container = f"/cvmfs/singularity.opensciencegrid.org/xenonnt/base-environment:{tag}"
+            if image_path is not None:
+                s_container = image_path
+            else:
+                s_container = find_container_path(c, partition=partition, tag=tag)
+            # s_container = f"/cvmfs/singularity.opensciencegrid.org/xenonnt/base-environment:{tag}"
             # s_container = f"{image_dir}/xenonnt-{tag}.simg"
 
             # Add the singularity runner script to the batch job
