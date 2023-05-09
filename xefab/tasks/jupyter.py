@@ -30,12 +30,6 @@ CONTAINER_PATHS = {
 
     }
 
-def find_container_path(c, partition, tag):
-    for path in CONTAINER_PATHS[partition]:
-        path = path.format(tag=tag)
-        if is_file(c, path):
-            return path
-    raise ValueError(f"No container found for {partition} and tag {tag}")
 
 JOB_HEADER = """#!/bin/bash
 #SBATCH --job-name={job_name}
@@ -78,6 +72,29 @@ jupyter {jupyter} --no-browser --port={port} --ip=0.0.0.0 --notebook-dir {notebo
 
 
 START_JUPYTER_SINGULARITY = """
+
+CONTAINER_PATHS=(
+{container_paths}
+)
+
+# Loop through the paths
+for path in $CONTAINER_PATHS; do
+    # If the file exists at this path
+    if [ -f "$path" ]; then
+        # Set the environment variable
+        export CONTAINER=$path
+        echo "using container: $CONTAINER"
+        # Exit the loop
+        break
+    fi
+done
+
+# Check if CONTAINER has been set
+if [ -z "$CONTAINER" ]; then
+    echo "Error: No existing container found in the provided paths" >&2
+    exit 1
+fi
+
 SINGULARITY_CACHEDIR=$TMPDIR/singularity_cache
 
 mkdir -p $SINGULARITY_CACHEDIR
@@ -89,7 +106,7 @@ module load singularity
 
 echo Starting jupyter job
 
-singularity exec {bind_str} {container} jupyter {jupyter} --no-browser --port={port} --ip=0.0.0.0 
+singularity exec {bind_str} $CONTAINER jupyter {jupyter} --no-browser --port={port} --ip=0.0.0.0 
 
 """
 # --notebook-dir {notebook_dir}
@@ -242,9 +259,9 @@ host and forward to local port via ssh-tunnel."""
 
         if env == "singularity":
             if image_path is not None:
-                s_container = image_path
+                container_paths = image_path.format(tag=tag)
             else:
-                s_container = find_container_path(c, partition=partition, tag=tag)
+                container_paths = "\n".join([p.format(tag=tag) for p in CONTAINER_PATHS[partition]])
             # s_container = f"/cvmfs/singularity.opensciencegrid.org/xenonnt/base-environment:{tag}"
             # s_container = f"{image_dir}/xenonnt-{tag}.simg"
 
@@ -253,7 +270,7 @@ host and forward to local port via ssh-tunnel."""
             batch_job = JOB_HEADER + START_JUPYTER_SINGULARITY.format(
                 user=c.user,
                 bind_str=bind_str,
-                container=s_container,
+                container_paths=container_paths,
                 jupyter=jupyter,
                 notebook_dir=notebook_dir,
                 port=remote_port,
