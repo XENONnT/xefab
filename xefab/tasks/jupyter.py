@@ -117,7 +117,7 @@ ALT_CUTAX_PATHS=(
 # Loop through the paths
 for cpath in $ALT_CUTAX_PATHS; do
     # If the file exists at this path
-    if [ -f "$cpath" ]; then
+    if [ -d "$cpath" ]; then
         # Set the environment variable
         export ALT_CUTAX_PATH=$cpath
         echo "adding alternate cutax path: $ALT_CUTAX_PATH"
@@ -128,11 +128,11 @@ done
 
 # Check if ALT_CUTAX_PATH has been set
 if [ -z "$ALT_CUTAX_PATH" ]; then
-    echo "No existing container found in the provided paths, using home folder" >&2
+    echo "No existing cutax folder found in the provided paths, using home folder" >&2
     export ALT_CUTAX_PATH="$HOME"'/cutax'
 fi
 
-export ALT_CUTAX_PATH="$ALT_CUTAX_PATH="':/xenon/xenonnt/software/cutax'
+export ALT_CUTAX_PATH="$ALT_CUTAX_PATH"':/xenon/xenonnt/software/cutax'
 
 module load singularity
 
