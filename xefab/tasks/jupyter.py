@@ -17,6 +17,11 @@ from .utils import print_splash
 
 JOB_NAME = "xefab-jupyter"
 
+EXCLUDE_NODES = {
+    "xenon1t": "dali[028-030]",
+    "dali": "",
+}
+
 CONTAINER_PATHS = {
     "xenon1t": [
         "/project2/lgrandi/xenonnt/singularity-images/xenonnt-{tag}.simg",
@@ -102,11 +107,35 @@ mkdir -p $SINGULARITY_CACHEDIR
 # SINGULARITY_CACHEDIR=/home/{user}/scratch/singularity_cache
 echo Loading singularity module
 
+
+ALT_CUTAX_PATHS=(
+/project2/lgrandi/xenonnt/dali/lgrandi/xenonnt/software/cutax
+)
+
+# Loop through the paths
+for cpath in $ALT_CUTAX_PATHS; do
+    # If the file exists at this path
+    if [ -f "$cpath" ]; then
+        # Set the environment variable
+        export ALT_CUTAX_PATH=$cpath
+        echo "adding alternate cutax path: $ALT_CUTAX_PATH"
+        # Exit the loop
+        break
+    fi
+done
+
+# Check if ALT_CUTAX_PATH has been set
+if [ -z "$ALT_CUTAX_PATH" ]; then
+    echo "No existing container found in the provided paths, using home folder" >&2
+    export ALT_CUTAX_PATH=$HOME/cutax
+fi
+
+
 module load singularity
 
 echo Starting jupyter job
 
-singularity exec {bind_str} $CONTAINER jupyter {jupyter} --no-browser --port={port} --ip=0.0.0.0 
+singularity exec {bind_str} --bind $ALT_CUTAX_PATH:/xenon/xenonnt/software/cutax $CONTAINER jupyter {jupyter} --no-browser --port={port} --ip=0.0.0.0 
 
 """
 # --notebook-dir {notebook_dir}
@@ -145,6 +174,7 @@ def start_jupyter(
     tag: str = "development",
     binds: str = None,
     node: str = None,
+    exclude_nodes: str = None,
     timeout: int = 120,
     cpu: int = 2,
     ram: int = 8000,
@@ -175,6 +205,11 @@ host and forward to local port via ssh-tunnel."""
     if partition is None:
         partition = "dali" if c.original_host == "dali" else "xenon1t"
 
+    if exclude_nodes is None:
+        exclude_nodes = EXCLUDE_NODES.get(partition, "")
+
+    
+
     # bind directories inside the container
    
     if isinstance(binds, str):
@@ -182,7 +217,6 @@ host and forward to local port via ssh-tunnel."""
     
     if partition == "xenon1t":
         binds = binds or f"/project,/project2,/scratch/midway2/{c.user}".split(",")
-        binds.append("/project2/lgrandi/xenonnt/dali/lgrandi/xenonnt/software/cutax:/xenon/xenonnt/software/cutax")
     else:
         binds = binds or f"/dali,/scratch/dali/{c.user}".split(",")
 
@@ -365,6 +399,10 @@ host and forward to local port via ssh-tunnel."""
 
         if node:
             extra_header += "\n#SBATCH --nodelist={node}".format(node=node)
+        
+        if exclude_nodes:
+            extra_header += f"\n#SBATCH --exclude={exclude_nodes}"
+
         if max_hours is None:
             max_hours = 2 if gpu else 8
         else:
