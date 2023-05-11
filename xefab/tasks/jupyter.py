@@ -110,6 +110,8 @@ echo Loading singularity module
 
 ALT_CUTAX_PATHS=(
 /project2/lgrandi/xenonnt/dali/lgrandi/xenonnt/software/cutax
+/dali/lgrandi/xenonnt/software/cutax
+/xenon/xenonnt/software/cutax
 )
 
 # Loop through the paths
@@ -127,15 +129,16 @@ done
 # Check if ALT_CUTAX_PATH has been set
 if [ -z "$ALT_CUTAX_PATH" ]; then
     echo "No existing container found in the provided paths, using home folder" >&2
-    export ALT_CUTAX_PATH=$HOME/cutax
+    export ALT_CUTAX_PATH="$HOME"'/cutax'
 fi
 
+export ALT_CUTAX_PATH="$ALT_CUTAX_PATH="':/xenon/xenonnt/software/cutax'
 
 module load singularity
 
 echo Starting jupyter job
 
-singularity exec {bind_str} --bind $ALT_CUTAX_PATH:/xenon/xenonnt/software/cutax $CONTAINER jupyter {jupyter} --no-browser --port={port} --ip=0.0.0.0 
+singularity exec {bind_str} --bind $ALT_CUTAX_PATH $CONTAINER jupyter {jupyter} --no-browser --port={port} --ip=0.0.0.0 
 
 """
 # --notebook-dir {notebook_dir}
