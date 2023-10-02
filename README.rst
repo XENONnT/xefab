@@ -35,80 +35,86 @@ You can list the available tasks and options by running xf/xefab without any opt
 
     Core options:
 
-    --complete                      Print tab-completion candidates for given parse remainder.                                       
-    --hide=STRING                   Set default value of run()'s 'hide' kwarg.                                                       
-    --print-completion-script=STRINGPrint the tab-completion script for your preferred shell (bash|zsh|fish).                        
-    --prompt-for-login-password     Request an upfront SSH-auth password prompt.                                                     
-    --prompt-for-passphrase         Request an upfront SSH key passphrase prompt.                                                    
-    --prompt-for-sudo-password      Prompt user at start of session for the sudo.password config value.                              
-    --write-pyc                     Enable creation of .pyc files.                                                                   
-    -d, --debug                     Enable debug output.                                                                             
-    -D INT, --list-depth=INT        When listing tasks, only show the first INT levels.                                              
-    -e, --echo                      Echo executed commands before running.                                                           
-    -f STRING, --config=STRING      Runtime configuration file to use.                                                               
-    -F STRING, --list-format=STRING Change the display format used when listing tasks. Should be one of: flat (default), nested,     
-                                    json.                                                                                            
-    -h [STRING], --help[=STRING]    Show core or per-task help and exit.                                                             
-    -H STRING, --hosts=STRING       Comma-separated host name(s) to execute tasks against.                                           
-    -i, --identity                  Path to runtime SSH identity (key) file. May be given multiple times.                            
-    -l [STRING], --list[=STRING]    List available tasks, optionally limited to a namespace.                                         
-    -p, --pty                       Use a pty when executing shell commands.                                                         
-    -R, --dry                       Echo commands instead of running.                                                                
-    -S STRING, --ssh-config=STRING  Path to runtime SSH config file.                                                                 
-    -t INT, --connect-timeout=INT   Specifies default connection timeout, in seconds.                                                
-    -T INT, --command-timeout=INT   Specify a global command execution timeout, in seconds.                                          
-    -V, --version                   Show version and exit.                                                                           
-    -w, --warn-only                 Warn, instead of failing, when shell commands fail.                                              
+    --complete                      Print tab-completion candidates for given parse remainder.
+    --hide=STRING                   Set default value of run()'s 'hide' kwarg.
+    --print-completion-script=STRINGPrint the tab-completion script for your preferred shell (bash|zsh|fish).
+    --prompt-for-login-password     Request an upfront SSH-auth password prompt.
+    --prompt-for-passphrase         Request an upfront SSH key passphrase prompt.
+    --prompt-for-sudo-password      Prompt user at start of session for the sudo.password config value.
+    --write-pyc                     Enable creation of .pyc files.
+    -d, --debug                     Enable debug output.
+    -D INT, --list-depth=INT        When listing tasks, only show the first INT levels.
+    -e, --echo                      Echo executed commands before running.
+    -f STRING, --config=STRING      Runtime configuration file to use.
+    -F STRING, --list-format=STRING Change the display format used when listing tasks. Should be one of: flat (default), nested,
+                                    json.
+    -h [STRING], --help[=STRING]    Show core or per-task help and exit.
+    -H STRING, --hosts=STRING       Comma-separated host name(s) to execute tasks against.
+    -i, --identity                  Path to runtime SSH identity (key) file. May be given multiple times.
+    -l [STRING], --list[=STRING]    List available tasks, optionally limited to a namespace.
+    -p, --pty                       Use a pty when executing shell commands.
+    -R, --dry                       Echo commands instead of running.
+    -S STRING, --ssh-config=STRING  Path to runtime SSH config file.
+    -t INT, --connect-timeout=INT   Specifies default connection timeout, in seconds.
+    -T INT, --command-timeout=INT   Specify a global command execution timeout, in seconds.
+    -V, --version                   Show version and exit.
+    -w, --warn-only                 Warn, instead of failing, when shell commands fail.
 
 
     Subcommands:
 
-    show-context                      Show the context being used for tasks.                                                         
-    admin.user-db                                                                                                                    
-    dali.download-file                Download a file from a remote server.                                                          
-    dali.sbatch                       Create and submit a job to SLURM job queue on the remote host.                                 
-    dali.show-context                 Show the context being used for tasks.                                                         
-    dali.squeue (dali.job-queue)      Get the job-queue status.                                                                      
-    dali.start-jupyter                Start a jupyter analysis notebook on the remote host and forward to local port via ssh-tunnel. 
-    dali.upload-file                  Upload a file to a remote server.                                                              
-    github.clone                                                                                                                     
-    github.is-private                                                                                                                
-    github.is-public                                                                                                                 
-    github.token                                                                                                                     
-    github.xenon1t-members                                                                                                           
-    github.xenonnt-keys                                                                                                              
-    github.xenonnt-members                                                                                                           
-    install.chezmoi                                                                                                                  
-    install.get-system                                                                                                               
-    install.github-cli (install.gh)                                                                                                  
-    install.gnupg (install.gpg)                                                                                                      
-    install.go                                                                                                                       
-    install.gopass                                                                                                                   
-    install.miniconda (install.conda)                                                                                                
-    install.which                                                                                                                    
-    midway.download-file              Download a file from a remote server.                                                          
-    midway.sbatch                     Create and submit a job to SLURM job queue on the remote host.                                 
-    midway.show-context               Show the context being used for tasks.                                                         
-    midway.squeue (midway.job-queue)  Get the job-queue status.                                                                      
-    midway.start-jupyter              Start a jupyter analysis notebook on the remote host and forward to local port via ssh-tunnel. 
-    midway.upload-file                Upload a file to a remote server.                                                              
-    osg.condorq (osg.job-queue)                                                                                                      
-    osg.mc-chain                      Run a full chain MC simulation                                                                 
-    secrets.setup                                                                                                                    
-    secrets.setup-utilix-config                                                                                                      
-    sh.exists                                                                                                                        
-    sh.get-system                                                                                                                    
-    sh.is-dir                                                                                                                        
-    sh.is-file                                                                                                                       
-    sh.path                                                                                                                          
-    sh.shell (sh)                     Open interactive shell on remote host.                                                         
-    sh.which                                                                   
+    show-context                      Show the context being used for tasks.
+    admin.user-db
+    dali.download-file                Download a file from a remote server.
+    dali.sbatch                       Create and submit a job to SLURM job queue on the remote host.
+    dali.show-context                 Show the context being used for tasks.
+    dali.squeue (dali.job-queue)      Get the job-queue status.
+    dali.start-jupyter                Start a jupyter analysis notebook on the remote host and forward to local port via ssh-tunnel.
+    dali.upload-file                  Upload a file to a remote server.
+    github.clone
+    github.is-private
+    github.is-public
+    github.token
+    github.xenon1t-members
+    github.xenonnt-keys
+    github.xenonnt-members
+    install.chezmoi
+    install.get-system
+    install.github-cli (install.gh)
+    install.gnupg (install.gpg)
+    install.go
+    install.gopass
+    install.miniconda (install.conda)
+    install.which
+    midway.download-file              Download a file from a remote server.
+    midway.sbatch                     Create and submit a job to SLURM job queue on the remote host.
+    midway.show-context               Show the context being used for tasks.
+    midway.squeue (midway.job-queue)  Get the job-queue status.
+    midway.start-jupyter              Start a jupyter analysis notebook on the remote host and forward to local port via ssh-tunnel.
+    midway.upload-file                Upload a file to a remote server.
+    midway3.download-file             Download a file from a remote server.
+    midway3.sbatch                    Create and submit a job to SLURM job queue on the remote host.
+    midway3.show-context              Show the context being used for tasks.
+    midway3.squeue (midway3.job-queue)Get the job-queue status.
+    midway3.start-jupyter             Start a jupyter analysis notebook on the remote host and forward to local port via ssh-tunnel.
+    midway3.upload-file               Upload a file to a remote server.
+    osg.condorq (osg.job-queue)
+    osg.mc-chain                      Run a full chain MC simulation
+    secrets.setup
+    secrets.setup-utilix-config
+    sh.exists
+    sh.get-system
+    sh.is-dir
+    sh.is-file
+    sh.path
+    sh.shell (sh)                     Open interactive shell on remote host.
+    sh.which
 
 You can get help for a specific task by running e.g.
 
 .. code-block:: console
 
-    $ xf --help midway.start-jupyter
+    $ xf --help midway3.start-jupyter
     ╭─ start-jupyter ───────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
     │ xf [--core-opts] start-jupyter [--options][other tasks here ...]                                                              │
     │                                                                                                                               │
@@ -144,9 +150,9 @@ e.g. if you run
 
 .. code-block:: console
 
-    $ xf midway start-jupyter
+    $ xf midway3 start-jupyter
 
-The task will be run on the midway host, not the host you specified with --hosts.
+The task will be run on the midway3 host, not the host you specified with --hosts.
 
 
 Features
