@@ -43,12 +43,16 @@ SPLASH_SCREENS = {
     "osg": OSG_SPLASH_SCREEN,
     "dali": UCHICAGO_SPLASH_SCREEN,
     "midway": UCHICAGO_SPLASH_SCREEN,
+    "midway3": UCHICAGO_SPLASH_SCREEN,
     "dali-login2.rcc.uchicago.edu": UCHICAGO_SPLASH_SCREEN,
     "dali-login1.rcc.uchicago.edu": UCHICAGO_SPLASH_SCREEN,
     "login.xenon.ci-connect.net": OSG_SPLASH_SCREEN,
     "midway2.rcc.uchicago.edu": UCHICAGO_SPLASH_SCREEN,
     "midway2-login1.rcc.uchicago.edu": UCHICAGO_SPLASH_SCREEN,
     "midway2-login2.rcc.uchicago.edu": UCHICAGO_SPLASH_SCREEN,
+    "midway3.rcc.uchicago.edu": UCHICAGO_SPLASH_SCREEN,
+    "midway3-login3.rcc.uchicago.edu": UCHICAGO_SPLASH_SCREEN,
+    "midway3-login4.rcc.uchicago.edu": UCHICAGO_SPLASH_SCREEN,
 }
 
 
