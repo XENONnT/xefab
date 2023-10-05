@@ -54,6 +54,7 @@ xf = 'xefab.main:program.run'
 
 [tool.poetry.plugins."xefab.tasks"]
 "midway" = "xefab.hosts.uchicago.midway"
+"midway3" = "xefab.hosts.uchicago.midway3"
 "dali" = "xefab.hosts.uchicago.dali"
 "osg" = "xefab.hosts.osg"
 

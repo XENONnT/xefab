@@ -18,11 +18,17 @@ from .utils import print_splash
 JOB_NAME = "xefab-jupyter"
 
 EXCLUDE_NODES = {
+    "lgrandi": "",
     "xenon1t": "dali[028-030]",
     "dali": "",
 }
 
 CONTAINER_PATHS = {
+    "lgrandi": [
+        "/project2/lgrandi/xenonnt/singularity-images/xenonnt-{tag}.simg",
+        "/cvmfs/singularity.opensciencegrid.org/xenonnt/base-environment:{tag}"
+    ],
+
     "xenon1t": [
         "/project2/lgrandi/xenonnt/singularity-images/xenonnt-{tag}.simg",
         "/cvmfs/singularity.opensciencegrid.org/xenonnt/base-environment:{tag}"
@@ -147,7 +153,7 @@ singularity exec {bind_str} --bind $ALT_CUTAX_PATH $CONTAINER jupyter {jupyter} 
     pre=[print_splash],
     help={
         "env": "Environment to run on",
-        "partition": "Partition to run on (xenon1t or dali)",
+        "partition": "Partition to run on (lgrandi, xenon1t or dali)",
         "bypass_reservation": "Dont attempt to use the xenon notebook reservation",
         "tag": "Tag of the container to use",
         "binds": "Directories to bind to the container",
@@ -206,11 +212,18 @@ host and forward to local port via ssh-tunnel."""
         remote_port = random.randrange(15000, 20000)
 
     if partition is None:
-        partition = "dali" if c.original_host == "dali" else "xenon1t"
+        if c.original_host == "dali":
+            partition = "dali" 
+            reservation_name = None
+        elif c.original_host == "midway": 
+            partition ="xenon1t"
+            reservation_name = 'xenon_notebook'
+        elif c.original_host == "midway3": 
+            partition ="lgrandi"
+            reservation_name = 'lgrandi-jupyter'
 
     if exclude_nodes is None:
         exclude_nodes = EXCLUDE_NODES.get(partition, "")
-
     
 
     # bind directories inside the container
@@ -220,8 +233,10 @@ host and forward to local port via ssh-tunnel."""
     
     if partition == "xenon1t":
         binds = binds or f"/project,/project2,/scratch/midway2/{c.user}".split(",")
-    else:
+    elif partition == "dali":
         binds = binds or f"/dali,/scratch/dali/{c.user}".split(",")
+    else: 
+        binds = binds or f"/project2, /project/lgrandi, /scratch/midway3/{c.user}, /scratch/midway2/{c.user}".split(",")
 
     bind_str = " ".join([f"--bind {bind}" for bind in binds])
 
@@ -350,7 +365,7 @@ host and forward to local port via ssh-tunnel."""
 
         # FIXME: check if a job is already running.
 
-        _want_to_make_reservation = partition == "xenon1t" and (not bypass_reservation)
+        _want_to_make_reservation = partition in ["xenon1t", "lgrandi"] and (not bypass_reservation)
         if ram > 16000 and _want_to_make_reservation:
             console.print(
                 "You asked for more than 16 GB total memory you cannot use the notebook "
@@ -377,7 +392,7 @@ host and forward to local port via ssh-tunnel."""
                 result = c.run("scontrol show reservations", hide=True, warn=True)
                 if (
                     result.failed
-                    or "ReservationName=xenon_notebook" not in result.stdout
+                    or f"ReservationName={reservation_name}" not in result.stdout
                 ):
                     use_reservation = False
                     raise RuntimeError("Notebook reservation does not exist.")
@@ -395,7 +410,7 @@ host and forward to local port via ssh-tunnel."""
                 partition=partition,
                 qos=qos,
                 reservation=(
-                    "#SBATCH --reservation=xenon_notebook" if use_reservation else ""
+                    f"#SBATCH --reservation={reservation_name}" if use_reservation else ""
                 ),
             )
         )
